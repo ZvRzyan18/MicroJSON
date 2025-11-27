@@ -1,2 +1,2 @@
 # MicroJSON
-lightweight json parser/generator
+simple lightweight json parser/generator
