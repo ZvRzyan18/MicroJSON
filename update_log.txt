@@ -1,0 +1,36 @@
+# micro_json 0.0.2
+
+• change container into object
+
+• add support for json boolean
+
+• add support for unicode hex
+
+• fix json hash object
+
+• cache expander implemented to avoid buffer overflow
+
+• add array reader
+
+• converter of error code into string
+
+# micro_json 0.0.1
+
+• use sizeof for better size compatibility
+
+• revise comments 
+
+• recursive object reading
+
+• define some limits in types.h
+
+• implement simple parser
+
+• implement simple tokenizer
+
+• create object types
+
+• implement simple hash table
+
+• implement string pool for json object
+
