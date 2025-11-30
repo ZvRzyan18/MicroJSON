@@ -7,18 +7,21 @@
 extern "C" {
 #endif
 
+/*-----------------Forward def-------------------*/
+/* for pointer types */
 typedef struct MJSParsedData MJSParsedData;
 typedef struct MJSString MJSString;
 typedef struct MJSInt MJSInt;
 typedef struct MJSFloat MJSFloat;
 typedef struct MJSBoolean MJSBoolean;
 typedef struct MJSArray MJSArray;
-typedef struct MJSContainer MJSContainer;
+typedef struct MJSObject MJSObject;
 typedef union  MJSDynamicType MJSDynamicType;
 typedef struct MJSObjectPair MJSObjectPair;
 
 
 
+/*-----------------Struct Components-------------------*/
 /*
  JSON types
 */
@@ -46,7 +49,7 @@ struct MJSBoolean {
  unsigned char value;
 };
 
-
+/*-----------------Array Container-------------------*/
 struct MJSArray {
  unsigned char  type;
  unsigned char  reserve;
@@ -61,28 +64,32 @@ int MJSArray_Add(MJSArray *arr, MJSDynamicType value);
 MJSDynamicType* MJSArray_Get(MJSArray *arr, unsigned int index);
 unsigned int MJSArray_Size(MJSArray *arr);
 
-struct MJSContainer {
+/*-----------------Object Container-------------------*/
+struct MJSObject {
  char          *string_pool;
  unsigned int  string_pool_size;
  unsigned int  string_pool_reserve;
  
  MJSObjectPair *obj_pair_ptr;
  unsigned int  allocated_size;
+ unsigned int  next_empty;
  unsigned int  obj_pair_size;
  unsigned char reserve;
 };
 
 
-int MJSContainer_Init(MJSContainer *container);
-int MJSContainer_Destroy(MJSContainer *container);
-unsigned int MJSContainer_GetSize(MJSContainer *container);
-int MJSContainer_InsertFromPool(MJSContainer *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType value);
-int MJSContainer_Insert(MJSContainer *container, const char *key, unsigned int str_size, MJSDynamicType value);
-MJSObjectPair* MJSContainer_GetPairReference(MJSContainer *container, const char *key);
-unsigned int MJSContainer_AddToStringPool(MJSContainer *container, const char *str, unsigned int str_size);
+int MJSObject_Init(MJSObject *container);
+int MJSObject_Destroy(MJSObject *container);
+unsigned int MJSObject_GetSize(MJSObject *container);
+int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType value);
+int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType value);
+MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key);
+MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
+unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, unsigned int str_size);
+const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString *str);
 
-
-//this simulates a dynamic type
+/*-----------------Types and pair-------------------*/
+/* this simulates a dynamic type */
 union MJSDynamicType {
  unsigned char type;
  MJSString     value_string;
@@ -90,7 +97,7 @@ union MJSDynamicType {
  MJSFloat      value_float;
  MJSBoolean    value_boolean;
  MJSArray      value_array;
- MJSContainer  value_container;
+ MJSObject     value_object;
 };
 
 
@@ -102,8 +109,8 @@ struct MJSObjectPair {
 };
 
 
-
-//main container of json data
+/*-----------------Parsed data object-------------------*/
+/* main container of json parsed data */
 struct MJSParsedData {
  unsigned char *cache;
  unsigned int cache_size;
@@ -112,19 +119,28 @@ struct MJSParsedData {
  const char *current;
  const char *begin;
  const char *end;
- unsigned int cl; //current line
- unsigned int cb; //curly brackets
- unsigned int sb; //square brackets
- unsigned int dq; //double quote
+ unsigned int cl; /*current line*/
+ unsigned int cb; /*curly brackets*/
+ unsigned int sb; /*square brackets*/
+ unsigned int dq; /*double quote*/
  unsigned int nested;
- MJSContainer container;
+ MJSObject    container;
 };
 
 
 int MJSParserData_Create(MJSParsedData *parsed_data);
 int MJSParserData_Destroy(MJSParsedData *parsed_data);
+int MJSParserData_ExpandCache(MJSParsedData *parsed_data);
 
-
+/*-----------------Parsed result-------------------*/
+typedef struct {
+ unsigned int line;
+ char code;
+ 
+ /*unimplemented yet*/
+ char *ptr_reference;
+ unsigned short ref_size;
+} MJSTokenResult;
 
 
 #ifdef __cplusplus
