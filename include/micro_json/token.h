@@ -7,13 +7,11 @@
 extern "C" {
 #endif
 
-typedef struct {
- unsigned int line;
- unsigned char code;
-} MJSTokenResult;
+/* initialize tokenizer */
+int MJS_InitToken(MJSParsedData *parsed_data, const char *str, unsigned int len);
 
-MJSTokenResult MJS_StartToken(MJSParsedData *parsed_data, const char *str, unsigned int len);
-
+/* load everything to memory */
+MJSTokenResult MJS_StartToken(MJSParsedData *parsed_data);
 
 #ifdef __cplusplus
 }
