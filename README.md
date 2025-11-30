@@ -5,5 +5,5 @@ written in c89
 # Optimizations Techniques
 * SIMD Instructions (ARM NEON)
 * Aggressive Loop Unrolling
-* Memory Alignment allocator
+* Memory Aligned allocator
 
