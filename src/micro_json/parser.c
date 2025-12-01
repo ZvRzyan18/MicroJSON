@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+#if (defined(__ARM_NEON) || defined(__ARM_NEON__)) && defined(MJS_FORCE_VECTORIZE)
+#include "micro_json/parser_neon.h"
+#endif
 
 /*convert error code to string */
 const char* MJS_CodeToString(signed char code) {
@@ -45,19 +48,27 @@ int MJS_IsWhiteSpace(char c) {
 }
 
 
-
+/* check if the char is digit or not */
 int MJS_IsDigit(char c) {
  return c >= '0' && c <= '9';
 }
 
 
-
+/*
+ TODO : Optimize it for large strings
+ minimize loop and switch branches.
+*/
 int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
  parsed_data->cache_size = 0;
 
  char *cache_str = (char*)parsed_data->cache;
- 
+
  while(parsed_data->current < parsed_data->end) {
+
+#if defined(MJS_NEON)
+  Neon_ParseStringToCache(parsed_data);
+#endif
+
   switch(*parsed_data->current) {
    case '\\':
    
@@ -88,6 +99,11 @@ int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
      parsed_data->current++;
     break;
     case 'u': /*unicode*/
+    
+     /* avoid overflow access  */
+     if((parsed_data->current+4) >= parsed_data->end)
+      return -1;
+     
      parsed_data->current++;
      if(MJS_ReadUnicodeHexadecimal(parsed_data))
       return -1;
@@ -97,7 +113,6 @@ int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
     break;
    }
    }
-   
    
    break;
    case '\"':
@@ -112,7 +127,7 @@ int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
    break;
   }
   
-  /* expand cache size */
+  /* expand cache size so it wont overflow */
   if((parsed_data->cache_size+5) > parsed_data->cache_allocated_size) {
    if(MJSParserData_ExpandCache(parsed_data))
     return -1;
@@ -127,11 +142,16 @@ int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
 
 /*
  supported format
-  12 (int)
-  -3 (int)
-  3.45 (float)
-  7e+2 (float)
-  8.3e-1 (float)
+ • 12 (int)
+ • -3 (int)
+ • 3.45 (float)
+ • 7e+2 (float)
+ • 8.3e-1 (float)
+*/
+
+/*
+ since number has only very few characters,
+  it does not need a vectorized function.
 */
 int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
  parsed_data->cache_size = 0;
@@ -229,43 +249,45 @@ int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data) {
  if((parsed_data->current+4) < parsed_data->end) {
   unsigned int i, value;
   value = 0;
+  /* 
+   json only requires 4 character hex.
+   no more or less.
+  */
   for (i = 0; i < 4; i++) {
    const char c = *(parsed_data->current++);
-    value <<= 4;
-    if(c >= '0' && c <= '9')
-     value |= (c - '0');
-    else if (c >= 'A' && c <= 'F')
-     value |= (c - 'A' + 0xA);
-    else if (c >= 'a' && c <= 'f')
-     value |= (c - 'a' + 0xA);
-    else
-     return -1;
-   }
+   value <<= 4;
+   if(c >= '0' && c <= '9') value |= (c - '0');
+   else if (c >= 'A' && c <= 'F') value |= (c - 'A' + 0xA);
+   else if (c >= 'a' && c <= 'f') value |= (c - 'a' + 0xA);
+   else return -1;
+  }
   parsed_data->current--;
   parsed_data->cache_size += MJS_UnicodeToChar(value, (char*)parsed_data->cache, parsed_data->cache_size);
  }
  return 0;
 }
 
-
-int MJS_UnicodeToChar(unsigned int codepoint, char *out, unsigned int curr) {
- if(codepoint <= 0x7F) {
-  out[curr++] = codepoint;
+/*
+ convert unicode hex unsigned int into char array
+*/
+int MJS_UnicodeToChar(unsigned int unicode, char *out, unsigned int curr) {
+ if(unicode <= 0x7F) {
+  out[curr++] = unicode;
   return 1;
- } else if(codepoint <= 0x7FF) {
-  out[curr++] = 0xC0 | (codepoint >> 6);
-  out[curr++] = 0x80 | (codepoint & 0x3F);
+ } else if(unicode <= 0x7FF) {
+  out[curr++] = 0xC0 | (unicode >> 6);
+  out[curr++] = 0x80 | (unicode & 0x3F);
   return 2;
- } else if(codepoint <= 0xFFFF) {
-  out[curr++] = 0xE0 | (codepoint >> 12);
-  out[curr++] = 0x80 | ((codepoint >> 6) & 0x3F);
-  out[curr++] = 0x80 | (codepoint & 0x3F);
+ } else if(unicode <= 0xFFFF) {
+  out[curr++] = 0xE0 | (unicode >> 12);
+  out[curr++] = 0x80 | ((unicode >> 6) & 0x3F);
+  out[curr++] = 0x80 | (unicode & 0x3F);
   return 3;
  } else {
-  out[curr++] = 0xF0 | (codepoint >> 18);
-  out[curr++] = 0x80 | ((codepoint >> 12) & 0x3F);
-  out[curr++] = 0x80 | ((codepoint >> 6) & 0x3F);
-  out[curr++] = 0x80 | (codepoint & 0x3F);
+  out[curr++] = 0xF0 | (unicode >> 18);
+  out[curr++] = 0x80 | ((unicode >> 12) & 0x3F);
+  out[curr++] = 0x80 | ((unicode >> 6) & 0x3F);
+  out[curr++] = 0x80 | (unicode & 0x3F);
   return 4;
  }
  return 0; /* unreachable */

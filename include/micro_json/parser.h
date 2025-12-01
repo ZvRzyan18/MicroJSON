@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+/* convert code into constant string literals */
 const char* MJS_CodeToString(signed char code);
 
 /* check for valid whitespace */
@@ -21,8 +22,10 @@ int MJS_ParseStringToCache(MJSParsedData *parsed_data);
 /* parse number and write it into cache */
 int MJS_ParseNumberToCache(MJSParsedData *parsed_data);
 
+/* parse unicode hexadecimal */
 int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data);
 
+/* parse unicode value to to char */
 int MJS_UnicodeToChar(unsigned int codepoint, char *out, unsigned int curr);
 
 #ifdef __cplusplus

@@ -1,0 +1,16 @@
+{
+ "test1": 1296269,
+ "test2": "\\u2764unicode_character"
+ "test3": "Hello-World",
+ 
+ "sub object": {
+  "user": "username1",
+  "id": 123,
+  "type": "User",
+  "admin": false
+  },
+  
+ "mixed_array" : ["hello_world", 3, null, false, 12e-4, -4.5],
+ "empty_object" : {},
+ "empty_array" : []
+}
