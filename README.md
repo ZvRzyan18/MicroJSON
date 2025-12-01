@@ -7,7 +7,7 @@ written in c89
 * Embeddable (No need build systems)
 * Self Contained (No external library aside from libc)
 
-# Optimizations Techniques
+# Optimization Techniques
 * SIMD Instructions (ARM NEON)
 * Aggressive Loop Unrolling
 * Memory Aligned allocator
