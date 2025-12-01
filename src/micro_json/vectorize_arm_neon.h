@@ -6,7 +6,7 @@
 #if defined(__GNUC__) || defined(__clang__)
 #define __FORCE_INLINE__ static __attribute__((always_inline, unused))
 #else
-#drfine __FORCE_INLINE__ static
+#define __FORCE_INLINE__ static
 #endif
 
 
