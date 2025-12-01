@@ -4,10 +4,26 @@
 
 
 /*-----------------Static func-------------------*/
-
+/*
 static int fast_abs32(int x) {
  int mask = x >> 31;
  return (x ^ mask) - mask;
+}*/
+
+/*
+ guaranteed alignment of memory
+*/
+static void* __aligned_alloc(unsigned int m_size, unsigned char alignment) {
+	void *p1, **p2;
+	unsigned long long offset = alignment - 1 + sizeof(void*);
+ p1 = malloc(m_size + offset);
+ p2 = (void**)(((unsigned long long)p1 + offset) & ~(alignment - 1));
+ p2[-1] = p1;
+ return p2;
+}
+
+static void __aligned_dealloc(void* ptr) {
+	free(((void**)ptr)[-1]);
 }
 
 
@@ -19,10 +35,10 @@ int MJSArray_Init(MJSArray *arr) {
  if(!arr)
   return -1;
  memset(arr, 0x00, sizeof(MJSArray));
- arr->dynamic_type_ptr = (MJSDynamicType*)malloc(sizeof(MJSDynamicType) * MAX_RESERVE_ELEMENTS);
+ arr->dynamic_type_ptr = (MJSDynamicType*)__aligned_alloc(sizeof(MJSDynamicType) * MJS_MAX_RESERVE_ELEMENTS, MJS_OPTIMAL_ALIGNMENT);
  if(!arr->dynamic_type_ptr)
   return -1;
- arr->reserve = MAX_RESERVE_ELEMENTS;
+ arr->reserve = MJS_MAX_RESERVE_ELEMENTS;
  return 0;
 }
 
@@ -44,35 +60,47 @@ int MJSArray_Destroy(MJSArray *arr) {
    case MJS_TYPE_OBJECT:
     if(MJSObject_Destroy(&arr->dynamic_type_ptr[i].value_object)) return -1;
    break;
+   case MJS_TYPE_STRING:
+   case MJD_TYPE_BOOLEAN:
+   case MJS_TYPE_NULL:
+   case MJS_TYPE_NUMBER_INT:
+   case MJS_TYPE_NUMBER_FLOAT:
+   case 0xFF:
+   case 0:
+   break;
+   default:
+    return -1;
+   break;
   }
  }
- free(arr->dynamic_type_ptr);
+ if(arr->dynamic_type_ptr)
+ __aligned_dealloc(arr->dynamic_type_ptr);
  return 0;
 }
 
 /*
  add to MJSArray object, return 0 if success, return -1 if not.
 */
-int MJSArray_Add(MJSArray *arr, MJSDynamicType value) {
+int MJSArray_Add(MJSArray *arr, MJSDynamicType *value) {
  if(!arr)
   return -1;
  if(arr->reserve > 0) {
-  arr->dynamic_type_ptr[arr->size] = value;
+  arr->dynamic_type_ptr[arr->size] = *value;
   arr->reserve--;
   arr->size++;
  } else {
-  MJSDynamicType *new_ptr = (MJSDynamicType*)malloc(sizeof(MJSDynamicType) * (arr->size + MAX_RESERVE_ELEMENTS));
+  MJSDynamicType *new_ptr = (MJSDynamicType*)__aligned_alloc(sizeof(MJSDynamicType) * (arr->size + MJS_MAX_RESERVE_ELEMENTS), MJS_OPTIMAL_ALIGNMENT);
   
   if(!new_ptr)
    return -1;
    
   memcpy(new_ptr, arr->dynamic_type_ptr, sizeof(MJSDynamicType) * arr->size);
-  free(arr->dynamic_type_ptr);
+  __aligned_dealloc(arr->dynamic_type_ptr);
   arr->dynamic_type_ptr = new_ptr;
-  arr->reserve = MAX_RESERVE_ELEMENTS;
+  arr->reserve = MJS_MAX_RESERVE_ELEMENTS;
   
   /* add value */
-  arr->dynamic_type_ptr[arr->size] = value;
+  arr->dynamic_type_ptr[arr->size] = *value;
   arr->reserve--;
   arr->size++;
  }
@@ -106,20 +134,19 @@ static unsigned int generate_hash_index(const char *str, unsigned int str_size);
 int MJSObject_Init(MJSObject *container) {
  if(!container)
   return -1;
- memset(container, 0x00, sizeof(MJSObject));
- 
- container->obj_pair_ptr = (MJSObjectPair*)malloc(sizeof(MJSObjectPair) * MAX_RESERVE_ELEMENTS);
+ memset(container, 0x00, sizeof(MJSObject)); 
+ container->obj_pair_ptr = (MJSObjectPair*)__aligned_alloc(sizeof(MJSObjectPair) * MJS_MAX_RESERVE_ELEMENTS, MJS_OPTIMAL_ALIGNMENT);
  if(!container->obj_pair_ptr)
   return -1;
- memset(container->obj_pair_ptr, 0xFF, MAX_RESERVE_ELEMENTS * sizeof(MJSObjectPair));
+ memset(container->obj_pair_ptr, 0xFF, MJS_MAX_RESERVE_ELEMENTS * sizeof(MJSObjectPair));
  
- container->reserve = MAX_HASH_BUCKETS+MAX_RESERVE_ELEMENTS;
- container->allocated_size = MAX_HASH_BUCKETS+MAX_RESERVE_ELEMENTS;
- container->next_empty = MAX_HASH_BUCKETS;
- container->string_pool = (char*)malloc(sizeof(char) * MAX_RESERVE_BYTES);
+ container->reserve = MJS_MAX_HASH_BUCKETS + MJS_MAX_RESERVE_ELEMENTS;
+ container->allocated_size = MJS_MAX_HASH_BUCKETS + MJS_MAX_RESERVE_ELEMENTS;
+ container->next_empty = MJS_MAX_HASH_BUCKETS;
+ container->string_pool = (char*)__aligned_alloc(sizeof(char) * MJS_MAX_RESERVE_BYTES, MJS_OPTIMAL_ALIGNMENT);
  if(!container->string_pool)
   return -1;
- container->string_pool_reserve = MAX_RESERVE_BYTES;
+ container->string_pool_reserve = MJS_MAX_RESERVE_BYTES;
  return 0;
 }
 
@@ -129,7 +156,7 @@ int MJSObject_Destroy(MJSObject *container) {
   return -1;
  /* destroy other allocated memory first. */
  unsigned int i;
- for(i = 0; i < container->obj_pair_size; i++) {
+ for(i = 0; i < container->allocated_size; i++) {
   switch(container->obj_pair_ptr[i].value.type) {
    case MJS_TYPE_ARRAY:
     if(MJSArray_Destroy(&container->obj_pair_ptr[i].value.value_array)) return -1;
@@ -137,10 +164,23 @@ int MJSObject_Destroy(MJSObject *container) {
    case MJS_TYPE_OBJECT:
     if(MJSObject_Destroy(&container->obj_pair_ptr[i].value.value_object)) return -1;
    break;
+   case MJS_TYPE_STRING:
+   case MJD_TYPE_BOOLEAN:
+   case MJS_TYPE_NULL:
+   case MJS_TYPE_NUMBER_INT:
+   case MJS_TYPE_NUMBER_FLOAT:
+   case 0xFF:
+   case 0:
+   break;
+   default:
+    return -1;
+   break;
   }
  }
- free(container->string_pool);
- free(container->obj_pair_ptr);
+ if(container->string_pool)
+  __aligned_dealloc(container->string_pool);
+ if(container->obj_pair_ptr)
+  __aligned_dealloc(container->obj_pair_ptr);
  return 0;
 }
 
@@ -153,7 +193,7 @@ unsigned int MJSObject_GetSize(MJSObject *container) {
 
 
 
-int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType value) {
+int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value) {
  if(!container || (pool_index > container->string_pool_size) || !str_size)
   return -1;
  char *key = &container->string_pool[pool_index];
@@ -163,20 +203,20 @@ int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsi
  memset(&pair, 0xFF, sizeof(MJSObjectPair));
  pair.key_pool_index = str_pool_index;
  pair.key_pool_size = str_size;
- pair.value = value;
- 
+ pair.value = *value;
+
 	const unsigned int hash_index = generate_hash_index(key, str_size);
 	
 	if(container->reserve == 0) {
-	 MJSObjectPair *new_obj = (MJSObjectPair*)malloc((container->allocated_size + MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair));
+	 MJSObjectPair *new_obj = (MJSObjectPair*)__aligned_alloc((container->allocated_size + MJS_MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair), MJS_OPTIMAL_ALIGNMENT);
 	 if(!new_obj)
 	  return -1;
 	 memcpy(new_obj, container->obj_pair_ptr, container->allocated_size * sizeof(MJSObjectPair));
-	 memset(&new_obj[container->allocated_size], 0xFF, (unsigned int)fast_abs32((int)container->allocated_size - (int)MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair));
+	 memset(&new_obj[container->allocated_size], 0xFF, sizeof(MJSObjectPair) * MJS_MAX_RESERVE_ELEMENTS);
 	 
-	 container->allocated_size += MAX_RESERVE_ELEMENTS;
-	 container->reserve = MAX_RESERVE_ELEMENTS;
-	 free(container->obj_pair_ptr);
+	 container->allocated_size += MJS_MAX_RESERVE_ELEMENTS;
+	 container->reserve = MJS_MAX_RESERVE_ELEMENTS;
+	 __aligned_dealloc(container->obj_pair_ptr);
 	 container->obj_pair_ptr = new_obj;
 	}
 	
@@ -211,7 +251,7 @@ int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsi
 }
 
 
-int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType value) {
+int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value) {
  if(!container || !key || !str_size)
   return -1;
  
@@ -221,20 +261,20 @@ int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_siz
  memset(&pair, 0x00, sizeof(MJSObjectPair));
  pair.key_pool_index = str_pool_index;
  pair.key_pool_size = str_size;
- pair.value = value;
+ pair.value = *value;
  
 	const unsigned int hash_index = generate_hash_index(key, str_size);
 	
 	if(container->reserve == 0) {
-	 MJSObjectPair *new_obj = (MJSObjectPair*)malloc((container->allocated_size + MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair));
+	 MJSObjectPair *new_obj = (MJSObjectPair*)__aligned_alloc((container->allocated_size + MJS_MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair), MJS_OPTIMAL_ALIGNMENT);
 	 if(!new_obj)
 	  return -1;
 	 memcpy(new_obj, container->obj_pair_ptr, container->allocated_size * sizeof(MJSObjectPair));
-	 memset(&new_obj[container->allocated_size], 0xFF, (unsigned int)fast_abs32((int)container->allocated_size - (int)MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair));
-	 
-	 container->allocated_size += MAX_RESERVE_ELEMENTS;
-	 container->reserve = MAX_RESERVE_ELEMENTS;
-	 free(container->obj_pair_ptr);
+	 memset(&new_obj[container->allocated_size], 0xFF, sizeof(MJSObjectPair) * MJS_MAX_RESERVE_ELEMENTS);
+
+	 container->allocated_size += MJS_MAX_RESERVE_ELEMENTS;
+	 container->reserve = MJS_MAX_RESERVE_ELEMENTS;
+	 __aligned_dealloc(container->obj_pair_ptr);
 	 container->obj_pair_ptr = new_obj;
 	}
 			
@@ -349,16 +389,16 @@ unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, un
   container->string_pool[container->string_pool_size++] = '\0';
   return out_index;
  } else {
-  char *new_str = (char*)malloc(sizeof(char) * (container->string_pool_size + (str_size+1) + MAX_RESERVE_ELEMENTS));
+  char *new_str = (char*)__aligned_alloc(sizeof(char) * (container->string_pool_size + (str_size+1) + MJS_MAX_RESERVE_ELEMENTS), MJS_OPTIMAL_ALIGNMENT);
   if(!new_str)
    return 0xFFFFFFFF;
   memcpy(new_str, container->string_pool, sizeof(char) * container->string_pool_size);
-  free(container->string_pool);
+  __aligned_dealloc(container->string_pool);
   container->string_pool = new_str;
   memcpy(&container->string_pool[container->string_pool_size], str, sizeof(char) * str_size);
   out_index = container->string_pool_size;
   container->string_pool_size += str_size;
-  container->string_pool_reserve = MAX_RESERVE_ELEMENTS;
+  container->string_pool_reserve = MJS_MAX_RESERVE_ELEMENTS;
   /* null terminatior */
   container->string_pool[container->string_pool_size++] = '\0';
   return out_index;
@@ -381,10 +421,35 @@ const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString *str) {
 */
 static unsigned int generate_hash_index(const char *str, unsigned int str_size) {
  unsigned int index = 0;
- unsigned int i;
- for(i = 0; i < str_size; i++)
-  index += (unsigned int)str[i];
- return index % MAX_HASH_BUCKETS;
+ unsigned int i = 0;
+ 
+ /* agressive loop unrolling*/
+ while((i+8) < str_size) {
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+ }
+
+ while((i+4) < str_size) {
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+ }
+ 
+ while((i+2) < str_size) {
+  index += (unsigned int)str[i++];
+  index += (unsigned int)str[i++];
+ }
+ 
+ while(i < str_size) 
+  index += (unsigned int)str[i++];
+ return index % MJS_MAX_HASH_BUCKETS;
 }
 
 
@@ -397,8 +462,8 @@ int MJSParserData_Create(MJSParsedData *parsed_data) {
   return -1;
  
  memset(parsed_data, 0, sizeof(MJSParsedData));
- parsed_data->cache = (unsigned char*)malloc(sizeof(unsigned char) * MAX_CACHE_BYTES);
- parsed_data->cache_allocated_size = MAX_CACHE_BYTES;
+ parsed_data->cache = (unsigned char*)__aligned_alloc(sizeof(unsigned char) * MJS_MAX_CACHE_BYTES, MJS_OPTIMAL_ALIGNMENT);
+ parsed_data->cache_allocated_size = MJS_MAX_CACHE_BYTES;
  
  if(!parsed_data->cache)
   return -1;
@@ -411,8 +476,10 @@ int MJSParserData_Create(MJSParsedData *parsed_data) {
 int MJSParserData_Destroy(MJSParsedData *parsed_data) {
  if(!parsed_data)
   return -1;
- MJSObject_Destroy(&parsed_data->container);
- free(parsed_data->cache);
+ if(MJSObject_Destroy(&parsed_data->container))
+  return -1;
+ if(parsed_data->cache)
+ __aligned_dealloc(parsed_data->cache);
  return 0;
 }
 
@@ -420,15 +487,15 @@ int MJSParserData_Destroy(MJSParsedData *parsed_data) {
 int MJSParserData_ExpandCache(MJSParsedData *parsed_data) {
  if(!parsed_data)
   return -1;
- unsigned char *new_cache = (unsigned char*)malloc(sizeof(unsigned char) * (parsed_data->cache_allocated_size + MAX_RESERVE_BYTES));
+ unsigned char *new_cache = (unsigned char*)__aligned_alloc(sizeof(unsigned char) * (parsed_data->cache_allocated_size + MJS_MAX_RESERVE_BYTES), MJS_OPTIMAL_ALIGNMENT);
  
  if(!new_cache)
   return -1;
   
  memcpy(new_cache, parsed_data->cache, sizeof(unsigned char) * parsed_data->cache_size);
- free(parsed_data->cache);
+ __aligned_dealloc(parsed_data->cache);
  parsed_data->cache = new_cache;
- parsed_data->cache_allocated_size += MAX_RESERVE_BYTES;
+ parsed_data->cache_allocated_size += MJS_MAX_RESERVE_BYTES;
  return 0;
 }
 
