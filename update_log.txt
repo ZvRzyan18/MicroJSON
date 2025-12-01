@@ -1,3 +1,25 @@
+# micro_json 0.0.3
+
+• fix object and array destroy function
+
+• simplify simd functions
+
+• fix memory leak on json object
+
+• deallocation correctness, null safe
+
+• add limits prefix
+
+• add aligned memory allocator 
+
+• add arm neon support 
+
+• add a vectorize neon function for parser string
+
+• guard if for string unicode to prevent potential overflow
+
+• optimize hash function
+
 # micro_json 0.0.2
 
 • change container into object
