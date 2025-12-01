@@ -32,11 +32,14 @@ typedef enum {
 /*
  limits
 */
-#define MAX_CACHE_BYTES      512
-#define MAX_RESERVE_BYTES    128
-#define MAX_RESERVE_ELEMENTS 16
-#define MAX_NESTED_VALUE     10
-#define MAX_HASH_BUCKETS     16
+#define MJS_MAX_CACHE_BYTES       512
+#define MJS_MAX_RESERVE_BYTES     128
+#define MJS_MAX_RESERVE_ELEMENTS  16
+#define MJS_MAX_NESTED_VALUE      10
+#define MJS_MAX_HASH_BUCKETS      16
+#define MJS_OPTIMAL_ALIGNMENT     16
+
+#define MJS_FORCE_VECTORIZE 
 
 #endif
 

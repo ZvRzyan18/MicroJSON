@@ -18,7 +18,7 @@ typedef struct MJSArray MJSArray;
 typedef struct MJSObject MJSObject;
 typedef union  MJSDynamicType MJSDynamicType;
 typedef struct MJSObjectPair MJSObjectPair;
-
+typedef struct MJSTokenResult MJSTokenResult;
 
 
 /*-----------------Struct Components-------------------*/
@@ -60,12 +60,13 @@ struct MJSArray {
 
 int MJSArray_Init(MJSArray *arr);
 int MJSArray_Destroy(MJSArray *arr);
-int MJSArray_Add(MJSArray *arr, MJSDynamicType value);
+int MJSArray_Add(MJSArray *arr, MJSDynamicType *value);
 MJSDynamicType* MJSArray_Get(MJSArray *arr, unsigned int index);
 unsigned int MJSArray_Size(MJSArray *arr);
 
 /*-----------------Object Container-------------------*/
 struct MJSObject {
+ unsigned char type;
  char          *string_pool;
  unsigned int  string_pool_size;
  unsigned int  string_pool_reserve;
@@ -81,8 +82,8 @@ struct MJSObject {
 int MJSObject_Init(MJSObject *container);
 int MJSObject_Destroy(MJSObject *container);
 unsigned int MJSObject_GetSize(MJSObject *container);
-int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType value);
-int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType value);
+int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value);
+int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value);
 MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key);
 MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
 unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, unsigned int str_size);
@@ -133,14 +134,10 @@ int MJSParserData_Destroy(MJSParsedData *parsed_data);
 int MJSParserData_ExpandCache(MJSParsedData *parsed_data);
 
 /*-----------------Parsed result-------------------*/
-typedef struct {
+struct MJSTokenResult {
  unsigned int line;
  char code;
- 
- /*unimplemented yet*/
- char *ptr_reference;
- unsigned short ref_size;
-} MJSTokenResult;
+};
 
 
 #ifdef __cplusplus
