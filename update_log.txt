@@ -1,3 +1,53 @@
+# micro_json 0.0.5
+
+• remove null check when freeing memory
+
+• explicit error code
+
+• convert is digit function into macro
+
+• convert is whitespace function into macro
+
+• improve arm neon suport
+
+• minimize branches in arm neon string parser
+
+# micro_json 0.0.4
+
+• switch to strncmp instead of memcpy in strings
+
+• use strncpy instead of memcpy in string for auto null termination
+
+• use realloc instead of manulally using malloc/memcpy/free
+
+• fix string pool seg fault.
+
+• specify the length of string in get reference object
+
+• remove object get size function
+
+• fix hash overflow access
+
+• fix invalid type deallocation
+
+• fix memory leak for object inside an array
+
+• optimize hash element insertion
+
+• optimize hash element retrieval
+
+• optimize generate hash function
+
+• create a single main header micro_json.h
+
+• minimize branches with simd instructions
+
+• improve arm neon support
+
+• provide examples of usage (reading array)
+
+• fix hash segmentation fault for no existing object
+
 # micro_json 0.0.3
 
 • fix object and array destroy function

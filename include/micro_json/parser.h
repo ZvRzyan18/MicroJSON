@@ -7,14 +7,14 @@
 extern "C" {
 #endif
 
+/* check for valid whitespace */
+#define MJS_IsWhiteSpace(c) ((c == '\0') || (c == 0x20) || (c == 0x0A) || (c == 0x0D) || (c == 0x09))
+/* check it its digit or not */
+#define MJS_IsDigit(c) (c >= '0' && c <= '9')
+
+
 /* convert code into constant string literals */
 const char* MJS_CodeToString(signed char code);
-
-/* check for valid whitespace */
-int MJS_IsWhiteSpace(char c);
-
-/* check it its digit or not */
-int MJS_IsDigit(char c);
 
 /* parse string and its special cases, then set them into cache */
 int MJS_ParseStringToCache(MJSParsedData *parsed_data);
