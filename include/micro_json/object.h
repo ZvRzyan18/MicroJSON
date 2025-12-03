@@ -72,7 +72,6 @@ struct MJSObject {
  unsigned int  string_pool_reserve;
  
  MJSObjectPair *obj_pair_ptr;
- unsigned int  allocated_size;
  unsigned int  next_empty;
  unsigned int  obj_pair_size;
  unsigned char reserve;
@@ -81,10 +80,9 @@ struct MJSObject {
 
 int MJSObject_Init(MJSObject *container);
 int MJSObject_Destroy(MJSObject *container);
-unsigned int MJSObject_GetSize(MJSObject *container);
 int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value);
 int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value);
-MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key);
+MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key, unsigned int str_size);
 MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
 unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, unsigned int str_size);
 const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString *str);
