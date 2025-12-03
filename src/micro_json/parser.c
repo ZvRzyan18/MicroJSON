@@ -37,20 +37,23 @@ const char* MJS_CodeToString(signed char code) {
   case MJS_RESULT_REACHED_MAX_NESTED_DEPTH:
    return "MJS_RESULT_REACHED_MAX_NESTED_DEPTH";
   break;
+  case MJS_RESULT_EMPTY_KEY:
+   return "MJS_RESULT_EMPTY_KEY";
+  break;
+  case MJS_RESULT_DUPLICATE_KEY:
+   return "MJS_RESULT_DUPLICATE_KEY";
+  break;
+  case MJS_RESULT_INCOMPLETE_STRING_SYNTAX:
+   return "MJS_RESULT_INCOMPLETE_STRING_SYNTAX";
+  break;
+  case MJS_RESULT_INVALID_ESCAPE_SEQUENCE:
+   return "MJS_RESULT_INVALID_ESCAPE_SEQUENCE";
+  break;
+  case MJS_RESULT_INVALID_HEX_VALUE:
+   return "MJS_RESULT_INVALID_HEX_VALUE";
+  break;
  }
  return "Unknown Error";
-}
-
-
-/* return if its a valid whitespace or not */
-int MJS_IsWhiteSpace(char c) {
- return (c == '\0') || (c == 0x20) || (c == 0x0A) || (c == 0x0D) || (c == 0x09);
-}
-
-
-/* check if the char is digit or not */
-int MJS_IsDigit(char c) {
- return c >= '0' && c <= '9';
 }
 
 
@@ -60,13 +63,22 @@ int MJS_IsDigit(char c) {
 */
 int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
  parsed_data->cache_size = 0;
-
+ int result;
  char *cache_str = (char*)parsed_data->cache;
-
+ 
  while(parsed_data->current < parsed_data->end) {
 
 #if defined(MJS_NEON)
+  if((parsed_data->cache_size+16+5) > parsed_data->cache_allocated_size) {
+   result = MJSParserData_ExpandCache(parsed_data);
+   if(result) return result;
+  }
   Neon_ParseStringToCache(parsed_data);
+#else
+  if((parsed_data->cache_size+5) > parsed_data->cache_allocated_size) {
+   result = MJSParserData_ExpandCache(parsed_data);
+   if(result) return result;
+  }
 #endif
 
   switch(*parsed_data->current) {
@@ -102,14 +114,14 @@ int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
     
      /* avoid overflow access  */
      if((parsed_data->current+4) >= parsed_data->end)
-      return -1;
+      return MJS_RESULT_INCOMPLETE_STRING_SYNTAX;
      
      parsed_data->current++;
-     if(MJS_ReadUnicodeHexadecimal(parsed_data))
-      return -1;
+     result = MJS_ReadUnicodeHexadecimal(parsed_data);
+     if(result) return result;
     break;
     default:
-     return -1;
+     return MJS_RESULT_INVALID_ESCAPE_SEQUENCE;
     break;
    }
    }
@@ -125,12 +137,6 @@ int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
    default:
     cache_str[parsed_data->cache_size++] = *parsed_data->current;
    break;
-  }
-  
-  /* expand cache size so it wont overflow */
-  if((parsed_data->cache_size+5) > parsed_data->cache_allocated_size) {
-   if(MJSParserData_ExpandCache(parsed_data))
-    return -1;
   }
   
   parsed_data->current++;
@@ -199,9 +205,7 @@ int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
        goto __MJS_ParseNumberToCache_Output;
       break;
       default:
-       if(MJS_IsWhiteSpace(*parsed_data->current))
-        goto __MJS_ParseNumberToCache_Output;
-       return 0;
+       goto __MJS_ParseNumberToCache_Output;
       break;
      }
     } else {
@@ -259,7 +263,7 @@ int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data) {
    if(c >= '0' && c <= '9') value |= (c - '0');
    else if (c >= 'A' && c <= 'F') value |= (c - 'A' + 0xA);
    else if (c >= 'a' && c <= 'f') value |= (c - 'a' + 0xA);
-   else return -1;
+   else return MJS_RESULT_INVALID_HEX_VALUE;
   }
   parsed_data->current--;
   parsed_data->cache_size += MJS_UnicodeToChar(value, (char*)parsed_data->cache, parsed_data->cache_size);
