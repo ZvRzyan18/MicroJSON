@@ -75,7 +75,7 @@ int MJSArray_Destroy(MJSArray *arr) {
     if(result) return result;
    break;
    case MJS_TYPE_STRING:
-   case MJD_TYPE_BOOLEAN:
+   case MJS_TYPE_BOOLEAN:
    case MJS_TYPE_NULL:
    case MJS_TYPE_NUMBER_INT:
    case MJS_TYPE_NUMBER_FLOAT:
@@ -178,7 +178,7 @@ int MJSObject_Destroy(MJSObject *container) {
     if(result) return result;
    break;
    case MJS_TYPE_STRING:
-   case MJD_TYPE_BOOLEAN:
+   case MJS_TYPE_BOOLEAN:
    case MJS_TYPE_NULL:
    case MJS_TYPE_NUMBER_INT:
    case MJS_TYPE_NUMBER_FLOAT:
@@ -424,7 +424,7 @@ static unsigned int generate_hash_index(const char *str, unsigned int str_size) 
 /*
  allocate MJSParserData, return 0 if sucess, return -1 if not.
 */
-int MJSParserData_Create(MJSParsedData *parsed_data) {
+int MJSParserData_Init(MJSParsedData *parsed_data) {
  if(!parsed_data)
   return MJS_RESULT_NULL_POINTER;
  
