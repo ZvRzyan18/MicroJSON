@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
  MJSTokenResult json_result;
  
  //init parser data
- if(MJSParserData_Create(&json_parser)) {
+ if(MJSParserData_Init(&json_parser)) {
   perror("init data failed");
   return -1;
  }

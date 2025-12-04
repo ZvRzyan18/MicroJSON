@@ -1,5 +1,9 @@
 # micro_json 0.0.5
 
+• change from parsed data create into init (function name)
+
+• fix typo with boolean type
+
 • remove null check when freeing memory
 
 • explicit error code
