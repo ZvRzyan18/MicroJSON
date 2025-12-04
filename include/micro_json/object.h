@@ -127,7 +127,7 @@ struct MJSParsedData {
 };
 
 
-int MJSParserData_Create(MJSParsedData *parsed_data);
+int MJSParserData_Init(MJSParsedData *parsed_data);
 int MJSParserData_Destroy(MJSParsedData *parsed_data);
 int MJSParserData_ExpandCache(MJSParsedData *parsed_data);
 
