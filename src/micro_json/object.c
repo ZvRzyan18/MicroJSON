@@ -372,7 +372,7 @@ unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, un
  unsigned int out_index = 0xFFFFFFFF;
  
  if(container->string_pool_reserve > (str_size+1)) {
-  strncpy(&container->string_pool[container->string_pool_size], str, sizeof(char) * str_size);
+  strncpy(&container->string_pool[container->string_pool_size], str, sizeof(char) * (str_size+1));
   out_index = container->string_pool_size;
   container->string_pool_size += str_size+1;
   container->string_pool_reserve -= str_size+1;
@@ -387,7 +387,7 @@ unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, un
   /*
    concat the input string into the pool.
   */
-  strncpy(&container->string_pool[container->string_pool_size], str, sizeof(char) * str_size);
+  strncpy(&container->string_pool[container->string_pool_size], str, sizeof(char) * (str_size+1));
   out_index = container->string_pool_size;
   container->string_pool_size += str_size+1;
   container->string_pool_reserve = MJS_MAX_RESERVE_ELEMENTS;
