@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     case MJS_TYPE_NUMBER_FLOAT:
      printf("float : %f\n", dynamic_type->value_float.value);
     break;
-    case MJD_TYPE_BOOLEAN:
+    case MJS_TYPE_BOOLEAN:
      printf("boolean : %s\n", dynamic_type->value_boolean.value ? "true" : "false");
     break;
    }
