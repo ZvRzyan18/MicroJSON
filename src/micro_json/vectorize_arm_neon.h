@@ -5,6 +5,8 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #define __FORCE_INLINE__ static __inline__ __attribute__((always_inline, unused))
+#elif defined(_MSC_VER)
+#define __FORCE_INLINE__ static __forceinline
 #else
 #define __FORCE_INLINE__ static
 #endif

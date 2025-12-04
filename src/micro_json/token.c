@@ -182,7 +182,7 @@ static int read_json_object_value(MJSParsedData *parsed_data, MJSObject *contain
 
     if(strncmp(parsed_data->current, "true", 4) == 0) {
      parsed_data->current += 4;
-     dynamic_type.type = MJD_TYPE_BOOLEAN;
+     dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 1;
      result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
      if(result) return result;
@@ -197,7 +197,7 @@ static int read_json_object_value(MJSParsedData *parsed_data, MJSObject *contain
 
     if(strncmp(parsed_data->current, "false", 5) == 0) {
      parsed_data->current += 5;
-     dynamic_type.type = MJD_TYPE_BOOLEAN;
+     dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 0;
      result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
      if(result) return result;
@@ -384,7 +384,7 @@ static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *containe
 
     if(strncmp(parsed_data->current, "true", 4) == 0) {
      parsed_data->current += 3;
-     dynamic_type.type = MJD_TYPE_BOOLEAN;
+     dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 1;
      result = MJSArray_Add(arr, &dynamic_type);
      if(result) return result;
@@ -397,7 +397,7 @@ static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *containe
 
     if(strncmp(parsed_data->current, "false", 5) == 0) {
      parsed_data->current += 4;
-     dynamic_type.type = MJD_TYPE_BOOLEAN;
+     dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 0;
      result = MJSArray_Add(arr, &dynamic_type);
      if(result) return result;
