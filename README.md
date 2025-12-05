@@ -2,6 +2,18 @@
 Simple, Extremely Fast, Low level and lightweight json parser/generator
 written in c89
 
+# Features
+* Simple
+* Embeddable (No need build systems)
+* Self Contained (No external library aside from libc, <stdlib.h>, <string.h>, <math.h>)
+
+# Optimizations
+* SIMD Instructions (ARM NEON)
+* Aggressive Loop Unrolling
+* Memory aligned allocator
+* Cache friendly array Based Hash
+* Tag unions for multiple types
+
 # Sample
  [sample_array.cpp](https://github.com/ZvRzyan18/MicroJSON/blob/main/sample_array.cpp)
 ```cpp
@@ -94,16 +106,4 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 ```
-# Features
-* Simple
-* Embeddable (No need build systems)
-* Self Contained (No external library aside from libc)
-
-# Optimization Techniques
-* SIMD Instructions (ARM NEON)
-* Aggressive Loop Unrolling
-* Memory Aligned allocator
-* Cache friendly Array Based Hash
-* Tag Unions for multiple types
-
 
