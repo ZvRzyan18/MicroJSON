@@ -4,7 +4,7 @@
 #define MJS_NEON
 
 #if defined(__GNUC__) || defined(__clang__)
-#define __FORCE_INLINE__ static __inline__ __attribute__((always_inline, unused))
+#define __FORCE_INLINE__ static __inline__ __attribute__((always_inline, unused, hot))
 #elif defined(_MSC_VER)
 #define __FORCE_INLINE__ static __forceinline
 #else
@@ -17,7 +17,7 @@
 */
 
 __FORCE_INLINE__ int Neon_AnyOf_s8(int8x8_t x) {
- return *((unsigned long long*)&x) != 0;
+ return *((unsigned long*)&x) != 0;
 }
 
 __FORCE_INLINE__ int Neon_AnyOf_s16(int8x16_t x) {
@@ -75,5 +75,28 @@ __FORCE_INLINE__ uint64x2_t Neon_UpdateCounterIfAny(uint64x2_t counter, int8x8_t
 }
 
 
+__FORCE_INLINE__ int Neon_CountNonZero(int8x16_t v) {
+ uint8x16_t tmp1 = vtstq_s8(v, v);
+ uint16x8_t tmp2 = vpaddlq_u8(tmp1);
+ uint32x4_t tmp3 = vpaddlq_u16(tmp2);
+ uint64x2_t tmp4 = vpaddlq_u32(tmp3);
+ uint64_t mx = vgetq_lane_u64(tmp4, 0) + vgetq_lane_u64(tmp4, 1);
+ /* divide by 255*/
+ return (int)((mx * 0x80808081) >> 39);
+}
+
+/*
+__FORCE_INLINE__ uint8_t Neon_PackToBits(int8x8_t v) {
+ uint8x8_t tmp1 = vtst_s8(v, v);
+ uint8x8_t bits = vshr_n_u8(tmp1, 7);
+ return (vget_lane_u8(bits,0) << 0) | (vget_lane_u8(bits,1) << 1) | (vget_lane_u8(bits,2) << 2) | (vget_lane_u8(bits,3) << 3) | (vget_lane_u8(bits,4) << 4) | (vget_lane_u8(bits,5) << 5) | (vget_lane_u8(bits,6) << 6) | (vget_lane_u8(bits,7) << 7);
+}
+
+__FORCE_INLINE__ int Neon_FirstNonZeroIndex(int8x16_t v) {
+ uint16_t lo = (uint16_t)Neon_PackToBits(vget_low_s8(v));
+ uint16_t hi = (uint16_t)Neon_PackToBits(vget_high_s8(v)) << 8;
+ return __builtin_ctz((lo | hi) & 0xFFFF);
+}
+*/
 
 

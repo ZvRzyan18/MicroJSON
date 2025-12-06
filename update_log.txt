@@ -1,3 +1,37 @@
+# micro_json 0.0.7
+
+• switch from strncmp into memcmp
+
+• switch from strncpy into memcpy
+
+# micro_json 0.0.6
+
+• fix parsing object right inside an array at the end
+
+• auto indent in a writer
+
+• fix object only at the top level
+
+• support for both buffer and files
+
+• implement new writer
+
+• revice object insert key into memory pool, (only add to pool when insertion success)
+
+• use compiler hints
+
+• use pointer cast instead of memcpy in number parser
+
+• use exp2 (exp2(x * log2(10))) instead of pow(10, x)
+
+• use memcmp instead of strncmp in hash object searching
+
+• minimize potential branches fallback of simd (arm neon)
+
+• allow only aligned access for simd
+
+• fix bug in strncpy (string pool is not properly null terminated)
+
 # micro_json 0.0.5
 
 • change from parsed data create into init (function name)

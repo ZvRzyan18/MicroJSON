@@ -2,6 +2,21 @@
 #define MC_JSON_TYPES_H
 
 /*
+ compiler hints
+*/
+#if defined(__GNUC__) || defined(__clang__)
+#define MJS_Likely(x)   __builtin_expect(!!(x), 1)
+#define MJS_Unlikely(x) __builtin_expect(!!(x), 0)
+#define MJS_HOT __attribute__((hot))
+#define MJS_COLD __attribute__((cold))
+#else
+#define MJS_Likely(x)   (x)
+#define MJS_Unlikely(x) (x)
+#define MJS_HOT 
+#define MJS_COLD
+#endif
+
+/*
  types
 */
 typedef enum {
@@ -14,6 +29,13 @@ typedef enum {
  MJS_TYPE_NUMBER_FLOAT = 7,
 } MJS_TYPE;
 
+/*
+ write mode
+*/
+typedef enum {
+ MJS_WRITE_TO_MEMORY_BUFFER = 1,
+ MJS_WRITE_TO_FILE = 2,
+} MJS_WRITE_MODE;
 /*
  error defs
 */
@@ -32,16 +54,19 @@ typedef enum {
  MJS_RESULT_INCOMPLETE_STRING_SYNTAX = -11,
  MJS_RESULT_INVALID_ESCAPE_SEQUENCE = -12,
  MJS_RESULT_INVALID_HEX_VALUE = -13,
+ MJS_RESULT_INVALID_WRITE_MODE = -14,
+ MJE_RESULT_UNSUCCESSFUL_IO_WRITE = -15,
+ MJE_RESULT_ROOT_NOT_FOUND = -16,
 } MJS_RESULT;
 
 /*
  limits
 */
-#define MJS_MAX_CACHE_BYTES       512
-#define MJS_MAX_RESERVE_BYTES     128
-#define MJS_MAX_RESERVE_ELEMENTS  32
+#define MJS_MAX_CACHE_BYTES       32
+#define MJS_MAX_RESERVE_BYTES     16
+#define MJS_MAX_RESERVE_ELEMENTS  8
 #define MJS_MAX_NESTED_VALUE      10
-#define MJS_MAX_HASH_BUCKETS      32
+#define MJS_MAX_HASH_BUCKETS      8
 #define MJS_OPTIMAL_ALIGNMENT     16
 
 #define MJS_FORCE_VECTORIZE 

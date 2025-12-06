@@ -8,10 +8,10 @@ extern "C" {
 #endif
 
 /* initialize tokenizer */
-int MJS_InitToken(MJSParsedData *parsed_data, const char *str, unsigned int len);
+MJS_COLD int MJS_InitToken(MJSParsedData *parsed_data, const char *str, unsigned int len);
 
 /* load everything to memory */
-MJSTokenResult MJS_StartToken(MJSParsedData *parsed_data);
+MJS_COLD MJSTokenResult MJS_StartToken(MJSParsedData *parsed_data);
 
 #ifdef __cplusplus
 }
