@@ -11,22 +11,30 @@ extern "C" {
 #define MJS_IsWhiteSpace(c) ((c == '\0') || (c == 0x20) || (c == 0x0A) || (c == 0x0D) || (c == 0x09))
 /* check it its digit or not */
 #define MJS_IsDigit(c) (c >= '0' && c <= '9')
-
+/* rough estimation of unicode value checking */
+#define MJS_CheckUnicode(c0, c1) (c0 > 0x7F && c1 != 0)
 
 /* convert code into constant string literals */
-const char* MJS_CodeToString(signed char code);
+MJS_COLD const char* MJS_CodeToString(signed char code);
 
 /* parse string and its special cases, then set them into cache */
-int MJS_ParseStringToCache(MJSParsedData *parsed_data);
+MJS_HOT int MJS_ParseStringToCache(MJSParsedData *parsed_data);
 
 /* parse number and write it into cache */
-int MJS_ParseNumberToCache(MJSParsedData *parsed_data);
+MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data);
 
 /* parse unicode hexadecimal */
-int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data);
+MJS_HOT int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data);
 
 /* parse unicode value to to char */
-int MJS_UnicodeToChar(unsigned int codepoint, char *out, unsigned int curr);
+MJS_HOT int MJS_UnicodeToChar(unsigned int codepoint, char *out, unsigned int curr);
+
+/* convert from char array to unicode */
+MJS_HOT int MJS_UTF8ToUnicode(const char *s, int *code_size);
+
+/* write string to cache */
+MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str, unsigned int str_size);
+
 
 #ifdef __cplusplus
 }

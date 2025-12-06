@@ -2,6 +2,7 @@
 #define MC_JSON_OBJECT_H
 
 #include "micro_json/types.h"
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,7 +20,7 @@ typedef struct MJSObject MJSObject;
 typedef union  MJSDynamicType MJSDynamicType;
 typedef struct MJSObjectPair MJSObjectPair;
 typedef struct MJSTokenResult MJSTokenResult;
-
+typedef struct MJSOutputStreamBuffer MJSOutputStreamBuffer;
 
 /*-----------------Struct Components-------------------*/
 /*
@@ -58,11 +59,11 @@ struct MJSArray {
 };
 
 
-int MJSArray_Init(MJSArray *arr);
-int MJSArray_Destroy(MJSArray *arr);
-int MJSArray_Add(MJSArray *arr, MJSDynamicType *value);
-MJSDynamicType* MJSArray_Get(MJSArray *arr, unsigned int index);
-unsigned int MJSArray_Size(MJSArray *arr);
+MJS_COLD int MJSArray_Init(MJSArray *arr);
+MJS_COLD int MJSArray_Destroy(MJSArray *arr);
+MJS_HOT int MJSArray_Add(MJSArray *arr, MJSDynamicType *value);
+MJS_HOT MJSDynamicType* MJSArray_Get(MJSArray *arr, unsigned int index);
+MJS_HOT unsigned int MJSArray_Size(MJSArray *arr);
 
 /*-----------------Object Container-------------------*/
 struct MJSObject {
@@ -78,14 +79,14 @@ struct MJSObject {
 };
 
 
-int MJSObject_Init(MJSObject *container);
-int MJSObject_Destroy(MJSObject *container);
-int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value);
-int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value);
-MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key, unsigned int str_size);
-MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
-unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, unsigned int str_size);
-const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString *str);
+MJS_COLD int MJSObject_Init(MJSObject *container);
+MJS_COLD int MJSObject_Destroy(MJSObject *container);
+MJS_HOT int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value);
+MJS_HOT int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value);
+MJS_HOT MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key, unsigned int str_size);
+MJS_HOT MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
+MJS_HOT unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, unsigned int str_size);
+MJS_HOT const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString *str);
 
 /*-----------------Types and pair-------------------*/
 /* this simulates a dynamic type */
@@ -127,9 +128,9 @@ struct MJSParsedData {
 };
 
 
-int MJSParserData_Init(MJSParsedData *parsed_data);
-int MJSParserData_Destroy(MJSParsedData *parsed_data);
-int MJSParserData_ExpandCache(MJSParsedData *parsed_data);
+MJS_COLD int MJSParserData_Init(MJSParsedData *parsed_data);
+MJS_COLD int MJSParserData_Destroy(MJSParsedData *parsed_data);
+MJS_HOT int MJSParserData_ExpandCache(MJSParsedData *parsed_data);
 
 /*-----------------Parsed result-------------------*/
 struct MJSTokenResult {
@@ -137,6 +138,25 @@ struct MJSTokenResult {
  char code;
 };
 
+/*-----------------Output Stream buffer-------------------*/
+struct MJSOutputStreamBuffer {
+ unsigned char mode;
+ FILE          *file_ptr;
+ char          *buff;
+ unsigned int  buff_size;
+ unsigned int  buff_reserve;
+ 
+ char         *cache;
+ unsigned int cache_size;
+ unsigned int cache_allocated_size;
+};
+
+
+MJS_COLD int MJSOutputStreamBuffer_Init(MJSOutputStreamBuffer *buff, unsigned char mode, FILE *fp);
+MJS_COLD int MJSOutputStreamBuffer_Destroy(MJSOutputStreamBuffer *buff);
+MJS_HOT int MJSOutputStreamBuffer_Write(MJSOutputStreamBuffer *buff, char *arr, unsigned int arr_size);
+MJS_HOT int MJSOutputStreamBuffer_Flush(MJSOutputStreamBuffer *buff);
+MJS_HOT int MJSOutputStreamBuffer_ExpandCache(MJSOutputStreamBuffer *buff);
 
 #ifdef __cplusplus
 }
