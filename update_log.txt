@@ -1,5 +1,15 @@
 # micro_json 0.0.7
 
+• implement get and set function with specific type
+
+• duplication in string pool end up in a same location
+
+• update from get pair reference to get value reference
+
+• provide optimal hash index generation using MJS_MAX_HASH_BUCKETS macro
+
+• check if MJS_MAX_HASH_BUCKETS is power of two
+
 • switch from strncmp into memcmp
 
 • switch from strncpy into memcpy
