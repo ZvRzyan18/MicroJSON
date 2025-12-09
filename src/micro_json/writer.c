@@ -16,11 +16,11 @@ MJS_COLD int MJSWriter_Serialize(MJSOutputStreamBuffer *buff, MJSObject *obj) {
   return MJS_RESULT_NULL_POINTER;
  int result;
  
- MJSObjectPair *ref = MJSObject_GetPairReference(obj, "root", 4);
+ MJSDynamicType *ref = MJSObject_Get(obj, "root", 4);
  if(MJS_Unlikely(!ref))
   return MJE_RESULT_ROOT_NOT_FOUND;
   
- result = write_value(buff, obj, &ref->value, 0);
+ result = write_value(buff, obj, ref, 0);
  if(MJS_Unlikely(result))
   return result;
   

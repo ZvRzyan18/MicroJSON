@@ -167,7 +167,7 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
     if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-    result = read_json_array_value(parsed_data, container, &MJSObject_GetPairReferenceFromPool(container, pool_index, str_size)->value.value_array, depth);
+    result = read_json_array_value(parsed_data, container, &MJSObject_GetFromPool(container, pool_index, str_size)->value_array, depth);
     if(MJS_Unlikely(result))
      return result;
    break;
@@ -178,7 +178,7 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
     if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-     result = read_json_object(parsed_data, &MJSObject_GetPairReferenceFromPool(container, pool_index, str_size)->value.value_object, depth+1);
+     result = read_json_object(parsed_data, &MJSObject_GetFromPool(container, pool_index, str_size)->value_object, depth+1);
     if(MJS_Unlikely(result))
      return result;
    break;
@@ -391,7 +391,7 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
     if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-    result = read_json_array_value(parsed_data, container, &MJSObject_GetPairReferenceFromPool(container, pool_index, str_size)->value.value_array, depth);
+    result = read_json_array_value(parsed_data, container, &MJSObject_GetFromPool(container, pool_index, str_size)->value_array, depth);
     if(MJS_Unlikely(result))
      return result;
     has_value = 1;
@@ -404,7 +404,7 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
     if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-     result = read_json_object(parsed_data, &MJSObject_GetPairReferenceFromPool(container, pool_index, str_size)->value.value_object, depth+1);
+     result = read_json_object(parsed_data, &MJSObject_GetFromPool(container, pool_index, str_size)->value_object, depth+1);
     if(MJS_Unlikely(result))
      return result;
     has_value = 1;

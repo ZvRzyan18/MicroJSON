@@ -65,6 +65,20 @@ MJS_HOT int MJSArray_Add(MJSArray *arr, MJSDynamicType *value);
 MJS_HOT MJSDynamicType* MJSArray_Get(MJSArray *arr, unsigned int index);
 MJS_HOT unsigned int MJSArray_Size(MJSArray *arr);
 
+MJS_HOT int MJSArray_AddString(MJSArray *arr, MJSObject *parent, const char *str);
+MJS_HOT const char* MJSArray_GetString(MJSArray *arr, MJSObject *parent, unsigned int index);
+MJS_HOT int MJSArray_AddObject(MJSArray *arr, MJSObject *obj);
+MJS_HOT MJSObject* MJSArray_GetObject(MJSArray *arr, unsigned int index);
+MJS_HOT int MJSArray_AddInt(MJSArray *arr, int _int_type);
+MJS_HOT int MJSArray_GetInt(MJSArray *arr, unsigned int index);
+MJS_HOT int MJSArray_AddFloat(MJSArray *arr, float _float_type);
+MJS_HOT float MJSArray_GetFloat(MJSArray *arr, unsigned int index);
+MJS_HOT int MJSArray_AddBoolean(MJSArray *arr, int _bool_type);
+MJS_HOT int MJSArray_GetBoolean(MJSArray *arr, unsigned int index);
+MJS_HOT int MJSArray_AddArray(MJSArray *arr, MJSArray *arr_input);
+MJS_HOT MJSArray* MJSArray_GetArray(MJSArray *arr, unsigned int index);
+
+
 /*-----------------Object Container-------------------*/
 struct MJSObject {
  unsigned char type;
@@ -83,10 +97,24 @@ MJS_COLD int MJSObject_Init(MJSObject *container);
 MJS_COLD int MJSObject_Destroy(MJSObject *container);
 MJS_HOT int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value);
 MJS_HOT int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value);
-MJS_HOT MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key, unsigned int str_size);
-MJS_HOT MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
+MJS_HOT MJSDynamicType* MJSObject_Get(MJSObject *container, const char *key, unsigned int str_size);
+MJS_HOT MJSDynamicType* MJSObject_GetFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
 MJS_HOT unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, unsigned int str_size);
 MJS_HOT const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString *str);
+
+MJS_HOT int MJSObject_InsertString(MJSObject *container, const char *key, const char *str);
+MJS_HOT const char* MJSObject_GetString(MJSObject *container, const char *key);
+MJS_HOT int MJSObject_InsertObject(MJSObject *container, const char *key, MJSObject *obj);
+MJS_HOT MJSObject* MJSObject_GetObject(MJSObject *container, const char *key);
+MJS_HOT int MJSObject_InsertInt(MJSObject *container, const char *key, int _int_type);
+MJS_HOT int MJSObject_GetInt(MJSObject *container, const char *key);
+MJS_HOT int MJSObject_InsertFloat(MJSObject *container, const char *key, float _float_type);
+MJS_HOT float MJSObject_GetFloat(MJSObject *container, const char *key);
+MJS_HOT int MJSObject_InsertBoolean(MJSObject *container, const char *key, int _bool_type);
+MJS_HOT int MJSObject_GetBoolean(MJSObject *container, const char *key);
+MJS_HOT int MJSObject_InsertArray(MJSObject *container, const char *key, MJSArray *arr);
+MJS_HOT MJSArray* MJSObject_GetArray(MJSObject *container, const char *key);
+
 
 /*-----------------Types and pair-------------------*/
 /* this simulates a dynamic type */
