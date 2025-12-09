@@ -5,6 +5,8 @@
 
 /*-----------------Static func-------------------*/
 
+#define IS_POWER_OF_TWO(x)  (!((x) & ((x) - 1)))
+
 /*
  guaranteed alignment of memory
 */
@@ -38,6 +40,62 @@ MJS_HOT static void __aligned_dealloc(void* ptr) {
  free(((void**)ptr)[-1]);
 }
 
+/*
+ search a sequence of character inside a string pool
+*/
+MJS_HOT static unsigned int MJS_Search_FromPool(const char* a, unsigned int str_size_a, const char *b, unsigned int str_size_b) {
+ const char *begin = a;
+ const char *end = a + str_size_a;
+
+ /*
+  aggressive unrolled loop
+ */
+ while((begin+8) < end && ((begin + str_size_b+9) < end)) {
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+  
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+ }
+
+ while((begin+4) < end && ((begin + str_size_b+5) < end)) {
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+ }
+
+ while(begin < end && ((begin + str_size_b+1) < end)) {
+  if(memcmp(begin, b, str_size_b+1) == 0) return (unsigned int)(end-begin);
+  begin++;
+ }
+ return 0xFFFFFFFF;
+}
 
 /*-----------------MJSArray-------------------*/
 /*
@@ -137,6 +195,83 @@ MJS_HOT unsigned int MJSArray_Size(MJSArray *arr) {
  return arr->size;
 }
 
+
+MJS_HOT int MJSArray_AddString(MJSArray *arr, MJSObject *parent, const char *str) {
+ MJSDynamicType str_obj;
+ str_obj.type = MJS_TYPE_STRING;
+ str_obj.value_string.str_size = (unsigned int)strlen(str);
+ str_obj.value_string.pool_index = MJSObject_AddToStringPool(parent, str, str_obj.value_string.str_size);
+ 
+ return MJSArray_Add(arr, &str_obj);
+}
+
+
+MJS_HOT const char* MJSArray_GetString(MJSArray *arr, MJSObject *parent, unsigned int index) {
+ return MJSObject_GetStringFromPool(parent, &MJSArray_Get(arr, index)->value_string);
+}
+
+
+MJS_HOT int MJSArray_AddObject(MJSArray *arr, MJSObject *obj) {
+ MJSDynamicType obj_type;
+ obj_type.value_object = *obj;
+ return MJSArray_Add(arr, &obj_type);
+}
+
+
+MJS_HOT MJSObject* MJSArray_GetObject(MJSArray *arr, unsigned int index) {
+ return &MJSArray_Get(arr, index)->value_object;
+}
+
+
+MJS_HOT int MJSArray_AddInt(MJSArray *arr, int _int_type) {
+ MJSDynamicType int_obj;
+ int_obj.type = MJS_TYPE_NUMBER_INT;
+ int_obj.value_int.value = _int_type;
+ return MJSArray_Add(arr, &int_obj);
+}
+
+
+MJS_HOT int MJSArray_GetInt(MJSArray *arr, unsigned int index) {
+ return MJSArray_Get(arr, index)->value_int.value;
+}
+
+
+MJS_HOT int MJSArray_AddFloat(MJSArray *arr, float _float_type) {
+ MJSDynamicType float_obj;
+ float_obj.type = MJS_TYPE_NUMBER_FLOAT;
+ float_obj.value_float.value = _float_type;
+ return MJSArray_Add(arr, &float_obj);
+}
+
+
+MJS_HOT float MJSArray_GetFloat(MJSArray *arr, unsigned int index) {
+ return MJSArray_Get(arr, index)->value_float.value;
+}
+
+
+MJS_HOT int MJSArray_AddBoolean(MJSArray *arr, int _bool_type) {
+ MJSDynamicType bool_obj;
+ bool_obj.type = MJS_TYPE_NUMBER_FLOAT;
+ bool_obj.value_boolean.value = _bool_type;
+ return MJSArray_Add(arr, &bool_obj);
+}
+
+
+MJS_HOT int MJSArray_GetBoolean(MJSArray *arr, unsigned int index) {
+ return MJSArray_Get(arr, index)->value_boolean.value;
+}
+
+
+MJS_HOT int MJSArray_AddArray(MJSArray *arr, MJSArray *arr_input) {
+ MJSDynamicType arr_type;
+ arr_type.value_array = *arr_input;
+ return MJSArray_Add(arr, &arr_type);
+}
+
+
+MJS_HOT MJSArray* MJSArray_GetArray(MJSArray *arr, unsigned int index) {
+ return &MJSArray_Get(arr, index)->value_array;
+}
 
 /*-----------------MJSContainer-------------------*/
 MJS_HOT static unsigned int generate_hash_index(const char *str, unsigned int str_size);
@@ -319,7 +454,7 @@ MJS_HOT int MJSObject_Insert(MJSObject *container, const char *key, unsigned int
 }
 
 
-MJS_HOT MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const char *key, unsigned int str_size) {
+MJS_HOT MJSDynamicType* MJSObject_Get(MJSObject *container, const char *key, unsigned int str_size) {
  if(MJS_Unlikely(!container || !key))
   return NULL;
   
@@ -333,7 +468,7 @@ MJS_HOT MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const ch
 	 	start_node = &container->obj_pair_ptr[next_index];
  	 if(key_len == start_node->key_pool_size) {
     if(MJS_Unlikely(memcmp(key, &container->string_pool[start_node->key_pool_index], key_len) == 0)) {
-	 	  return start_node;
+	 	  return &start_node->value;
 	 	 }
  	 }
 		 next_index = start_node->next;
@@ -342,7 +477,7 @@ MJS_HOT MJSObjectPair* MJSObject_GetPairReference(MJSObject *container, const ch
 }
 
 
-MJS_HOT MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size) {
+MJS_HOT MJSDynamicType* MJSObject_GetFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size) {
  if(MJS_Unlikely(!container || (pool_index > container->string_pool_size)))
   return NULL;
 
@@ -358,7 +493,7 @@ MJS_HOT MJSObjectPair* MJSObject_GetPairReferenceFromPool(MJSObject *container, 
 
  	 if(key_len == start_node->key_pool_size) {
     if(MJS_Unlikely(memcmp(key, &container->string_pool[start_node->key_pool_index], key_len) == 0)) {
-	 	  return start_node;
+	 	  return &start_node->value;
 	 	 }
  	 }
 		 next_index = start_node->next;
@@ -374,6 +509,10 @@ MJS_HOT unsigned int MJSObject_AddToStringPool(MJSObject *container, const char 
   return 0xFFFFFFFF;
  
  unsigned int out_index = 0xFFFFFFFF;
+ /* this allows the duplication of strings end up in the same location */
+ out_index = MJS_Search_FromPool(container->string_pool, container->string_pool_size, str, str_size);
+ if(out_index != 0xFFFFFFFF)
+  return out_index;
  
  if(container->string_pool_reserve > (str_size+1)) {
   /* strncpy(&container->string_pool[container->string_pool_size], str, sizeof(char) * (str_size+1)); */
@@ -413,6 +552,106 @@ MJS_HOT const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString 
  return &container->string_pool[str->pool_index];
 }
 
+
+
+
+MJS_HOT int MJSObject_InsertString(MJSObject *container, const char *key, const char *str) {
+ MJSDynamicType str_obj;
+ str_obj.type = MJS_TYPE_STRING;
+ str_obj.value_string.str_size = (unsigned int)strlen(str);
+ str_obj.value_string.pool_index = MJSObject_AddToStringPool(container, str, str_obj.value_string.str_size);
+ const unsigned int key_size = (unsigned int)strlen(key);
+ const unsigned int key_index = MJSObject_AddToStringPool(container, key, key_size);
+ 
+ return MJSObject_InsertFromPool(container, key_index, key_size, &str_obj);
+}
+
+
+MJS_HOT const char* MJSObject_GetString(MJSObject *container, const char *key) {
+ return MJSObject_GetStringFromPool(container, &MJSObject_Get(container, key, strlen(key))->value_string);
+}
+
+
+MJS_HOT int MJSObject_InsertObject(MJSObject *container, const char *key, MJSObject *obj) {
+ MJSDynamicType obj_type;
+ obj_type.value_object = *obj;
+
+ const unsigned int key_size = (unsigned int)strlen(key);
+ const unsigned int key_index = MJSObject_AddToStringPool(container, key, key_size);
+ 
+ return MJSObject_InsertFromPool(container, key_index, key_size, &obj_type);
+}
+
+
+MJS_HOT MJSObject* MJSObject_GetObject(MJSObject *container, const char *key) {
+ return &MJSObject_Get(container, key, strlen(key))->value_object;
+}
+
+
+MJS_HOT int MJSObject_InsertInt(MJSObject *container, const char *key, int _int_type) {
+ MJSDynamicType int_type;
+ int_type.type = MJS_TYPE_NUMBER_INT;
+ int_type.value_int.value = _int_type;
+ const unsigned int key_size = (unsigned int)strlen(key);
+ const unsigned int key_index = MJSObject_AddToStringPool(container, key, key_size);
+ 
+ return MJSObject_InsertFromPool(container, key_index, key_size, &int_type);
+}
+
+
+MJS_HOT int MJSObject_GetInt(MJSObject *container, const char *key) {
+ return MJSObject_Get(container, key, strlen(key))->value_int.value;
+}
+
+
+MJS_HOT int MJSObject_InsertFloat(MJSObject *container, const char *key, float _float_type) {
+ MJSDynamicType float_type;
+ float_type.type = MJS_TYPE_NUMBER_FLOAT;
+ float_type.value_float.value = _float_type;
+ const unsigned int key_size = (unsigned int)strlen(key);
+ const unsigned int key_index = MJSObject_AddToStringPool(container, key, key_size);
+ 
+ return MJSObject_InsertFromPool(container, key_index, key_size, &float_type);
+}
+
+
+MJS_HOT float MJSObject_GetFloat(MJSObject *container, const char *key) {
+ return MJSObject_Get(container, key, strlen(key))->value_float.value;
+}
+
+
+MJS_HOT int MJSObject_InsertBoolean(MJSObject *container, const char *key, int _bool_type) {
+ MJSDynamicType bool_type;
+ bool_type.type = MJS_TYPE_BOOLEAN;
+ bool_type.value_boolean.value = _bool_type;
+ const unsigned int key_size = (unsigned int)strlen(key);
+ const unsigned int key_index = MJSObject_AddToStringPool(container, key, key_size);
+ 
+ return MJSObject_InsertFromPool(container, key_index, key_size, &bool_type);
+}
+
+
+MJS_HOT int MJSObject_GetBoolean(MJSObject *container, const char *key) {
+ return MJSObject_Get(container, key, strlen(key))->value_boolean.value;
+}
+
+
+MJS_HOT int MJSObject_InsertArray(MJSObject *container, const char *key, MJSArray *arr) {
+ MJSDynamicType arr_type;
+ arr_type.type = MJS_TYPE_ARRAY;
+ arr_type.value_array = *arr;
+ const unsigned int key_size = (unsigned int)strlen(key);
+ const unsigned int key_index = MJSObject_AddToStringPool(container, key, key_size);
+ 
+ return MJSObject_InsertFromPool(container, key_index, key_size, &arr_type);
+}
+
+
+MJS_HOT MJSArray* MJSObject_GetArray(MJSObject *container, const char *key) {
+ return &MJSObject_Get(container, key, strlen(key))->value_array;
+}
+
+
 /*-----------------Static func-------------------*/
 /*
  Hash Function
@@ -425,8 +664,13 @@ MJS_HOT static unsigned int generate_hash_index(const char *str, unsigned int st
  const unsigned int m = str_size < 8 ? str_size : 8;
  
  while(i < m) index += (unsigned int)str[i++];
- 
+
+ /* power of two makes it a lot faster than other values */
+#if IS_POWER_OF_TWO(MJS_MAX_HASH_BUCKETS)
+ return (index * 123) & (MJS_MAX_HASH_BUCKETS-1);
+#else
  return (index * 123) % MJS_MAX_HASH_BUCKETS;
+#endif
 }
 
 
