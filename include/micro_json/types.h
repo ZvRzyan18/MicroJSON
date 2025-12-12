@@ -9,7 +9,17 @@
 #define MJS_Unlikely(x) __builtin_expect(!!(x), 0)
 #define MJS_HOT __attribute__((hot))
 #define MJS_COLD __attribute__((cold))
+
+typedef long long MJS_Int64;
+
+#elif defined(_MSC_VER)
+
+typedef __int64 MJS_Int64;
+
 #else
+
+typedef long int MJS_Int64;
+
 #define MJS_Likely(x)   (x)
 #define MJS_Unlikely(x) (x)
 #define MJS_HOT 
@@ -27,6 +37,7 @@ typedef enum {
  MJS_TYPE_ARRAY = 5,
  MJS_TYPE_NUMBER_INT = 6,
  MJS_TYPE_NUMBER_FLOAT = 7,
+ MJS_TYPE_NUMBER_DOUBLE = 8,
 } MJS_TYPE;
 
 /*
@@ -55,8 +66,10 @@ typedef enum {
  MJS_RESULT_INVALID_ESCAPE_SEQUENCE = -12,
  MJS_RESULT_INVALID_HEX_VALUE = -13,
  MJS_RESULT_INVALID_WRITE_MODE = -14,
- MJE_RESULT_UNSUCCESSFUL_IO_WRITE = -15,
- MJE_RESULT_ROOT_NOT_FOUND = -16,
+ MJS_RESULT_UNSUCCESSFUL_IO_WRITE = -15,
+ MJS_RESULT_ROOT_NOT_FOUND = -16,
+ MJS_RESULT_TOO_LARGE_NUMBER = -17,
+ MJS_RESULT_TOO_SMALL_NUMBER = -18,
 } MJS_RESULT;
 
 /*

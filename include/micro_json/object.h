@@ -14,6 +14,7 @@ typedef struct MJSParsedData MJSParsedData;
 typedef struct MJSString MJSString;
 typedef struct MJSInt MJSInt;
 typedef struct MJSFloat MJSFloat;
+typedef struct MJSDouble MJSDouble;
 typedef struct MJSBoolean MJSBoolean;
 typedef struct MJSArray MJSArray;
 typedef struct MJSObject MJSObject;
@@ -45,6 +46,12 @@ struct MJSFloat {
 };
 
 
+struct MJSDouble {
+ unsigned char type;
+ double        value;
+};
+
+
 struct MJSBoolean {
  unsigned char type;
  unsigned char value;
@@ -53,9 +60,9 @@ struct MJSBoolean {
 /*-----------------Array Container-------------------*/
 struct MJSArray {
  unsigned char  type;
- unsigned char  reserve;
- unsigned int   size;
  MJSDynamicType *dynamic_type_ptr;
+ unsigned int   size;
+ unsigned char  reserve;
 };
 
 
@@ -81,15 +88,14 @@ MJS_HOT MJSArray* MJSArray_GetArray(MJSArray *arr, unsigned int index);
 
 /*-----------------Object Container-------------------*/
 struct MJSObject {
- unsigned char type;
- char          *string_pool;
- unsigned int  string_pool_size;
- unsigned int  string_pool_reserve;
- 
- MJSObjectPair *obj_pair_ptr;
- unsigned int  next_empty;
- unsigned int  obj_pair_size;
- unsigned char reserve;
+ unsigned char  type;
+ char           *string_pool;
+ MJSObjectPair  *obj_pair_ptr;
+ unsigned int   string_pool_size;
+/* unsigned int next_empty;*/
+ unsigned short string_pool_reserve;
+ unsigned int   obj_pair_size;
+ unsigned char  reserve;
 };
 
 
@@ -123,6 +129,7 @@ union MJSDynamicType {
  MJSString     value_string;
  MJSInt        value_int;
  MJSFloat      value_float;
+ MJSDouble     value_double;
  MJSBoolean    value_boolean;
  MJSArray      value_array;
  MJSObject     value_object;
@@ -130,9 +137,9 @@ union MJSDynamicType {
 
 
 struct MJSObjectPair {
+ MJSDynamicType value;
  unsigned int   key_pool_index;
  unsigned int   key_pool_size;
- MJSDynamicType value;
  unsigned int   next;
 };
 
@@ -140,19 +147,22 @@ struct MJSObjectPair {
 /*-----------------Parsed data object-------------------*/
 /* main container of json parsed data */
 struct MJSParsedData {
+ MJSObject    container;
  unsigned char *cache;
- unsigned int cache_size;
- unsigned int cache_allocated_size;
 
  const char *current;
  const char *begin;
  const char *end;
+
+ unsigned int cache_allocated_size;
+
  unsigned int cl; /*current line*/
  unsigned int cb; /*curly brackets*/
  unsigned int sb; /*square brackets*/
  unsigned int dq; /*double quote*/
  unsigned int nested;
- MJSObject    container;
+
+ unsigned short cache_size;
 };
 
 
@@ -168,15 +178,16 @@ struct MJSTokenResult {
 
 /*-----------------Output Stream buffer-------------------*/
 struct MJSOutputStreamBuffer {
- unsigned char mode;
  FILE          *file_ptr;
  char          *buff;
- unsigned int  buff_size;
- unsigned int  buff_reserve;
- 
  char         *cache;
+ 
+ unsigned int  buff_size;
+
  unsigned int cache_size;
  unsigned int cache_allocated_size;
+ unsigned short  buff_reserve;
+ unsigned char mode;
 };
 
 

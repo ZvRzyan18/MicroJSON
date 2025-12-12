@@ -35,6 +35,7 @@ MJS_HOT int MJS_UTF8ToUnicode(const char *s, int *code_size);
 /* write string to cache */
 MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str, unsigned int str_size);
 
+MJS_HOT MJS_Int64 MJS_TruncuateFractional(MJS_Int64 fractional, char *count);
 
 #ifdef __cplusplus
 }
