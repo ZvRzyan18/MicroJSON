@@ -18,7 +18,7 @@ MJS_COLD int MJSWriter_Serialize(MJSOutputStreamBuffer *buff, MJSObject *obj) {
  
  MJSDynamicType *ref = MJSObject_Get(obj, "root", 4);
  if(MJS_Unlikely(!ref))
-  return MJE_RESULT_ROOT_NOT_FOUND;
+  return MJS_RESULT_ROOT_NOT_FOUND;
   
  result = write_value(buff, obj, ref, 0);
  if(MJS_Unlikely(result))
@@ -182,7 +182,15 @@ MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSD
   break;
   case MJS_TYPE_NUMBER_FLOAT:
 
-   sprintf(buff->cache, "%f", value->value_float.value);
+   sprintf(buff->cache, "%.6f", value->value_float.value);
+   result = MJSOutputStreamBuffer_Write(buff, buff->cache, strlen(buff->cache));
+   if(MJS_Unlikely(result))
+    return result;
+
+  break;
+  case MJS_TYPE_NUMBER_DOUBLE:
+
+   sprintf(buff->cache, "%.15f", value->value_double.value);
    result = MJSOutputStreamBuffer_Write(buff, buff->cache, strlen(buff->cache));
    if(MJS_Unlikely(result))
     return result;

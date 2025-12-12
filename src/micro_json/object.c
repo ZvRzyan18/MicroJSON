@@ -1,7 +1,7 @@
 #include "micro_json/object.h"
 #include <string.h>
 #include <stdlib.h>
-
+#include <assert.h>
 
 /*-----------------Static func-------------------*/
 
@@ -39,6 +39,29 @@ MJS_HOT static void __aligned_dealloc(void* ptr) {
   return;
  free(((void**)ptr)[-1]);
 }
+
+
+/*-----------------Static func-------------------*/
+/*
+ Hash Function
+ TODO : optimize this, mininize loop branches
+ or use agressive unrolling
+*/
+MJS_HOT static unsigned int generate_hash_index(const char *str, unsigned int str_size) {
+ unsigned int index = 0;
+ unsigned int i = 0;
+ const unsigned int m = str_size < 8 ? str_size : 8;
+ 
+ while(i < m) index += (unsigned int)str[i++];
+
+ /* power of two makes it a lot faster than other values */
+#if IS_POWER_OF_TWO(MJS_MAX_HASH_BUCKETS)
+ return (index * 123) & (MJS_MAX_HASH_BUCKETS-1);
+#else
+ return (index * 123) % MJS_MAX_HASH_BUCKETS;
+#endif
+}
+
 
 /*
  search a sequence of character inside a string pool
@@ -139,6 +162,7 @@ MJS_COLD int MJSArray_Destroy(MJSArray *arr) {
    case MJS_TYPE_NULL:
    case MJS_TYPE_NUMBER_INT:
    case MJS_TYPE_NUMBER_FLOAT:
+   case MJS_TYPE_NUMBER_DOUBLE:
   /* case 0xFF:*/
    break;
    default:
@@ -207,7 +231,10 @@ MJS_HOT int MJSArray_AddString(MJSArray *arr, MJSObject *parent, const char *str
 
 
 MJS_HOT const char* MJSArray_GetString(MJSArray *arr, MJSObject *parent, unsigned int index) {
- return MJSObject_GetStringFromPool(parent, &MJSArray_Get(arr, index)->value_string);
+ assert((index < arr->size && index >= 0) && "out of bounds");
+ MJSDynamicType *type = MJSArray_Get(arr, index);
+ assert(type->type == MJS_TYPE_STRING && "not a string");
+ return MJSObject_GetStringFromPool(parent, &type->value_string);
 }
 
 
@@ -219,7 +246,10 @@ MJS_HOT int MJSArray_AddObject(MJSArray *arr, MJSObject *obj) {
 
 
 MJS_HOT MJSObject* MJSArray_GetObject(MJSArray *arr, unsigned int index) {
- return &MJSArray_Get(arr, index)->value_object;
+ assert((index < arr->size && index >= 0) && "out of bounds");
+ MJSDynamicType *type = MJSArray_Get(arr, index);
+ assert(type->type == MJS_TYPE_OBJECT && "not an object");
+ return &type->value_object;
 }
 
 
@@ -232,7 +262,10 @@ MJS_HOT int MJSArray_AddInt(MJSArray *arr, int _int_type) {
 
 
 MJS_HOT int MJSArray_GetInt(MJSArray *arr, unsigned int index) {
- return MJSArray_Get(arr, index)->value_int.value;
+ assert((index < arr->size && index >= 0) && "out of bounds");
+ MJSDynamicType *type = MJSArray_Get(arr, index);
+ assert(type->type == MJS_TYPE_NUMBER_INT && "not an integer");
+ return type->value_int.value;
 }
 
 
@@ -245,7 +278,10 @@ MJS_HOT int MJSArray_AddFloat(MJSArray *arr, float _float_type) {
 
 
 MJS_HOT float MJSArray_GetFloat(MJSArray *arr, unsigned int index) {
- return MJSArray_Get(arr, index)->value_float.value;
+ assert((index < arr->size && index >= 0) && "out of bounds");
+ MJSDynamicType *type = MJSArray_Get(arr, index);
+ assert(type->type == MJS_TYPE_NUMBER_FLOAT && "not a float");
+ return type->value_float.value;
 }
 
 
@@ -258,7 +294,10 @@ MJS_HOT int MJSArray_AddBoolean(MJSArray *arr, int _bool_type) {
 
 
 MJS_HOT int MJSArray_GetBoolean(MJSArray *arr, unsigned int index) {
- return MJSArray_Get(arr, index)->value_boolean.value;
+ assert((index < arr->size && index >= 0) && "out of bounds");
+ MJSDynamicType *type = MJSArray_Get(arr, index);
+ assert(type->type == MJS_TYPE_NUMBER_INT && "not a boolean");
+ return type->value_boolean.value;
 }
 
 
@@ -270,11 +309,13 @@ MJS_HOT int MJSArray_AddArray(MJSArray *arr, MJSArray *arr_input) {
 
 
 MJS_HOT MJSArray* MJSArray_GetArray(MJSArray *arr, unsigned int index) {
- return &MJSArray_Get(arr, index)->value_array;
+ assert((index < arr->size && index >= 0) && "out of bounds");
+ MJSDynamicType *type = MJSArray_Get(arr, index);
+ assert(type->type == MJS_TYPE_ARRAY && "not an array");
+ return &type->value_array;
 }
 
 /*-----------------MJSContainer-------------------*/
-MJS_HOT static unsigned int generate_hash_index(const char *str, unsigned int str_size);
 
 
 MJS_COLD int MJSObject_Init(MJSObject *container) {
@@ -288,7 +329,7 @@ MJS_COLD int MJSObject_Init(MJSObject *container) {
  memset(container->obj_pair_ptr, 0xFF, pre_allocated_pair);
  container->type = MJS_TYPE_OBJECT;
  container->reserve = MJS_MAX_RESERVE_ELEMENTS;
- container->next_empty = MJS_MAX_HASH_BUCKETS;
+/* container->next_empty = MJS_MAX_HASH_BUCKETS;*/
  container->string_pool = (char*)__aligned_alloc(sizeof(char) * MJS_MAX_RESERVE_BYTES, MJS_OPTIMAL_ALIGNMENT);
  if(MJS_Unlikely(!container->string_pool))
   return MJS_RESULT_ALLOCATION_FAILED;
@@ -319,6 +360,7 @@ MJS_COLD int MJSObject_Destroy(MJSObject *container) {
    case MJS_TYPE_NULL:
    case MJS_TYPE_NUMBER_INT:
    case MJS_TYPE_NUMBER_FLOAT:
+   case MJS_TYPE_NUMBER_DOUBLE:
    case 0xFF:
    break;
    default:
@@ -381,7 +423,8 @@ MJS_HOT int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_ind
 		 next_index = start_node->next;
  	} while(next_index != 0xFFFFFFFF);
 
-		next_index = container->next_empty++;
+		/*next_index = container->next_empty++;*/
+		next_index = MJS_MAX_HASH_BUCKETS + container->obj_pair_size;
 		container->obj_pair_ptr[next_index] = pair;
 		container->obj_pair_ptr[prev_index].next = next_index;
 
@@ -441,7 +484,8 @@ MJS_HOT int MJSObject_Insert(MJSObject *container, const char *key, unsigned int
  	
  	pair.key_pool_index = MJSObject_AddToStringPool(container, key, str_size);
 
-		next_index = container->next_empty++;
+		/*next_index = container->next_empty++;*/
+		next_index = MJS_MAX_HASH_BUCKETS + container->obj_pair_size;
 		
 		container->obj_pair_ptr[next_index] = pair;
 		container->obj_pair_ptr[prev_index].next = next_index;
@@ -568,7 +612,10 @@ MJS_HOT int MJSObject_InsertString(MJSObject *container, const char *key, const 
 
 
 MJS_HOT const char* MJSObject_GetString(MJSObject *container, const char *key) {
- return MJSObject_GetStringFromPool(container, &MJSObject_Get(container, key, strlen(key))->value_string);
+ MJSDynamicType *type = MJSObject_Get(container, key, strlen(key));
+ assert(type != NULL && "not found");
+ assert(type->type == MJS_TYPE_STRING && "not a string");
+ return MJSObject_GetStringFromPool(container, &type->value_string);
 }
 
 
@@ -584,7 +631,10 @@ MJS_HOT int MJSObject_InsertObject(MJSObject *container, const char *key, MJSObj
 
 
 MJS_HOT MJSObject* MJSObject_GetObject(MJSObject *container, const char *key) {
- return &MJSObject_Get(container, key, strlen(key))->value_object;
+ MJSDynamicType *type = MJSObject_Get(container, key, strlen(key));
+ assert(type != NULL && "not found");
+ assert(type->type == MJS_TYPE_OBJECT && "not an object");
+ return &type->value_object;
 }
 
 
@@ -600,7 +650,10 @@ MJS_HOT int MJSObject_InsertInt(MJSObject *container, const char *key, int _int_
 
 
 MJS_HOT int MJSObject_GetInt(MJSObject *container, const char *key) {
- return MJSObject_Get(container, key, strlen(key))->value_int.value;
+ MJSDynamicType *type = MJSObject_Get(container, key, strlen(key));
+ assert(type != NULL && "not found");
+ assert(type->type == MJS_TYPE_NUMBER_INT && "not an integer");
+ return type->value_int.value;
 }
 
 
@@ -616,7 +669,10 @@ MJS_HOT int MJSObject_InsertFloat(MJSObject *container, const char *key, float _
 
 
 MJS_HOT float MJSObject_GetFloat(MJSObject *container, const char *key) {
- return MJSObject_Get(container, key, strlen(key))->value_float.value;
+ MJSDynamicType *type = MJSObject_Get(container, key, strlen(key));
+ assert(type != NULL && "not found");
+ assert(type->type == MJS_TYPE_NUMBER_FLOAT && "not an float");
+ return type->value_float.value;
 }
 
 
@@ -632,7 +688,10 @@ MJS_HOT int MJSObject_InsertBoolean(MJSObject *container, const char *key, int _
 
 
 MJS_HOT int MJSObject_GetBoolean(MJSObject *container, const char *key) {
- return MJSObject_Get(container, key, strlen(key))->value_boolean.value;
+ MJSDynamicType *type = MJSObject_Get(container, key, strlen(key));
+ assert(type != NULL && "not found");
+ assert(type->type == MJS_TYPE_BOOLEAN && "not a boolean");
+ return type->value_boolean.value;
 }
 
 
@@ -648,30 +707,12 @@ MJS_HOT int MJSObject_InsertArray(MJSObject *container, const char *key, MJSArra
 
 
 MJS_HOT MJSArray* MJSObject_GetArray(MJSObject *container, const char *key) {
- return &MJSObject_Get(container, key, strlen(key))->value_array;
+ MJSDynamicType *type = MJSObject_Get(container, key, strlen(key));
+ assert(type != NULL && "not found");
+ assert(type->type == MJS_TYPE_ARRAY && "not an array");
+ return &type->value_array;
 }
 
-
-/*-----------------Static func-------------------*/
-/*
- Hash Function
- TODO : optimize this, mininize loop branches
- or use agressive unrolling
-*/
-MJS_HOT static unsigned int generate_hash_index(const char *str, unsigned int str_size) {
- unsigned int index = 0;
- unsigned int i = 0;
- const unsigned int m = str_size < 8 ? str_size : 8;
- 
- while(i < m) index += (unsigned int)str[i++];
-
- /* power of two makes it a lot faster than other values */
-#if IS_POWER_OF_TWO(MJS_MAX_HASH_BUCKETS)
- return (index * 123) & (MJS_MAX_HASH_BUCKETS-1);
-#else
- return (index * 123) % MJS_MAX_HASH_BUCKETS;
-#endif
-}
 
 
 /*-----------------MJSParser-------------------*/
@@ -805,7 +846,7 @@ MJS_HOT int MJSOutputStreamBuffer_Write(MJSOutputStreamBuffer *buff, char *arr, 
     return MJS_RESULT_NULL_POINTER;
    elements = (unsigned int)fwrite(arr, sizeof(char), arr_size, buff->file_ptr);
    if(MJS_Unlikely(elements != arr_size))
-    return MJE_RESULT_UNSUCCESSFUL_IO_WRITE;
+    return MJS_RESULT_UNSUCCESSFUL_IO_WRITE;
   break;
   default:
    return MJS_RESULT_INVALID_WRITE_MODE;

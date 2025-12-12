@@ -1,4 +1,28 @@
+# micro_json 0.0.8
+
+• use compiler extension for 64 bit int 
+
+• implement double type in parser, token and writer
+
+• auto switch to int, float, double depends on the number
+
+• handle too large number
+
+• add double type
+
+• change from exp2 into lookup table
+
+• re arrange struct members to minimize memory waste in padding
+
+• remove next_empty in object components (slightly increasing the performance)
+
+• change reserve bytes from unsigned int into unsigned short
+
 # micro_json 0.0.7
+
+• fix bug error reading array inside an array
+
+• optimize adding an object inside a token.c
 
 • implement get and set function with specific type
 
