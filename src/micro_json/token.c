@@ -7,13 +7,34 @@
 #endif
 
 
-
 MJS_COLD static MJSTokenResult tokenize_1(MJSParsedData *parsed_data);
 MJS_HOT static int read_json_object(MJSParsedData *parsed_data, MJSObject *container, unsigned int depth);
 MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject *container, unsigned int pool_index, unsigned int str_size, unsigned int depth);
 MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSObject *container, unsigned int pool_index, unsigned int str_size, unsigned int depth);
 MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *container, MJSArray *arr, unsigned int depth);
 
+
+static int fast_memcmp_4(const char *a, const char *b) {
+ int out = 0;
+ out = a[0] == b[0];
+ out |= a[1] == b[1];
+ out |= a[2] == b[2];
+ out |= a[3] == b[3];
+ return out;
+}
+
+static int fast_memcmp_5(const char *a, const char *b) {
+ int out = 0;
+ out = a[0] == b[0];
+ out |= a[1] == b[1];
+ out |= a[2] == b[2];
+ out |= a[3] == b[3];
+ out |= a[4] == b[4];
+ return out;
+}
+
+
+/*-----------------Token func-------------------*/
 
 
 MJS_COLD int MJS_InitToken(MJSParsedData *parsed_data, const char *str, unsigned int len) { 
@@ -97,7 +118,7 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
     parsed_data->cl++;
    break;
    case 't': /* might be true*/
-    if(memcmp(parsed_data->current, "true", 4) == 0) {
+    if(fast_memcmp_4(parsed_data->current, "true") == 0) {
      parsed_data->current += 4;
      dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 1;
@@ -107,7 +128,7 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
      return MJS_RESULT_UNEXPECTED_TOKEN;
    break;
    case 'f': /* might be false */
-    if(memcmp(parsed_data->current, "false", 5) == 0) {
+    if(fast_memcmp_5(parsed_data->current, "false") == 0) {
      parsed_data->current += 5;
      dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 0;
@@ -117,7 +138,7 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
      return MJS_RESULT_UNEXPECTED_TOKEN;
    break;
    case 'n': /* might be null */
-    if(memcmp(parsed_data->current, "null", 4) == 0) {
+    if(fast_memcmp_4(parsed_data->current, "null") == 0) {
      parsed_data->current += 4;
      dynamic_type.type = MJS_TYPE_NULL;
      result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
@@ -153,8 +174,11 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
      case MJS_TYPE_NUMBER_FLOAT:
       dynamic_type.value_float.value = *(float*)parsed_data->cache;
      break;
+     case MJS_TYPE_NUMBER_DOUBLE:
+      dynamic_type.value_double.value = *(double*)parsed_data->cache;
+     break;
      default:
-      return MJS_RESULT_INVALID_TYPE;
+      return number_type;
      break;
     }
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
@@ -165,22 +189,21 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
     parsed_data->current++;
     result = MJSArray_Init(&dynamic_type.value_array);
     if(MJS_Unlikely(result)) return result;
+    result = read_json_array_value(parsed_data, container, &dynamic_type.value_array, depth);
+    if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-    result = read_json_array_value(parsed_data, container, &MJSObject_GetFromPool(container, pool_index, str_size)->value_array, depth);
-    if(MJS_Unlikely(result))
-     return result;
+
    break;
    case '{': /* an object */
     parsed_data->cb++;
     parsed_data->current++;
     result = MJSObject_Init(&dynamic_type.value_object);
     if(MJS_Unlikely(result)) return result;
+    result = read_json_object(parsed_data, &dynamic_type.value_object, depth+1);
+    if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-     result = read_json_object(parsed_data, &MJSObject_GetFromPool(container, pool_index, str_size)->value_object, depth+1);
-    if(MJS_Unlikely(result))
-     return result;
    break;
    case '}':
     parsed_data->cb--;
@@ -199,8 +222,11 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSO
       case MJS_TYPE_NUMBER_FLOAT:
        dynamic_type.value_float.value = *(float*)parsed_data->cache;
       break;
+      case MJS_TYPE_NUMBER_DOUBLE:
+       dynamic_type.value_double.value = *(double*)parsed_data->cache;
+      break;
       default:
-       return MJS_RESULT_INVALID_TYPE;
+       return number_type;
       break;
      }
      result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
@@ -243,7 +269,7 @@ MJS_HOT static int read_json_object(MJSParsedData *parsed_data, MJSObject *conta
      parsed_data->dq++;
      parsed_data->current++;
      result = MJS_ParseStringToCache(parsed_data);
-      if(MJS_Unlikely(result)) return result;
+     if(MJS_Unlikely(result)) return result;
      pool_index_key = MJSObject_AddToStringPool(container, (char*)parsed_data->cache, parsed_data->cache_size);
      if(MJS_Unlikely(pool_index_key == 0xFFFFFFFF))
       return MJS_RESULT_ALLOCATION_FAILED;
@@ -308,7 +334,7 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
     parsed_data->cl++;
    break;
    case 't': /* might be true*/
-    if(memcmp(parsed_data->current, "true", 4) == 0) {
+    if(fast_memcmp_4(parsed_data->current, "true") == 0) {
      parsed_data->current += 4;
      dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 1;
@@ -321,7 +347,7 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
     return 0;
    break;
    case 'f': /* might be false */
-    if(memcmp(parsed_data->current, "false", 5) == 0) {
+    if(fast_memcmp_5(parsed_data->current, "false") == 0) {
      parsed_data->current += 5;
      dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 0;
@@ -334,7 +360,7 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
     return 0;
    break;
    case 'n': /* might be null */
-    if(memcmp(parsed_data->current, "null", 4) == 0) {
+    if(fast_memcmp_4(parsed_data->current, "null") == 0) {
      parsed_data->current += 4;
      dynamic_type.type = MJS_TYPE_NULL;
      result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
@@ -375,8 +401,11 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
      case MJS_TYPE_NUMBER_FLOAT:
       dynamic_type.value_float.value = *(float*)parsed_data->cache;
      break;
+     case MJS_TYPE_NUMBER_DOUBLE:
+      dynamic_type.value_double.value = *(double*)parsed_data->cache;
+     break;
      default:
-      return MJS_RESULT_INVALID_TYPE;
+      return number_type;
      break;
     }
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
@@ -389,11 +418,10 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
     parsed_data->current++;
     result = MJSArray_Init(&dynamic_type.value_array);
     if(MJS_Unlikely(result)) return result;
+    result = read_json_array_value(parsed_data, container, &dynamic_type.value_array, depth);
+    if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-    result = read_json_array_value(parsed_data, container, &MJSObject_GetFromPool(container, pool_index, str_size)->value_array, depth);
-    if(MJS_Unlikely(result))
-     return result;
     has_value = 1;
     return 0;
    break;
@@ -402,11 +430,10 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
     parsed_data->current++;
     result = MJSObject_Init(&dynamic_type.value_object);
     if(MJS_Unlikely(result)) return result;
+    result = read_json_object(parsed_data, &dynamic_type.value_object, depth+1);
+    if(MJS_Unlikely(result)) return result;
     result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-     result = read_json_object(parsed_data, &MJSObject_GetFromPool(container, pool_index, str_size)->value_object, depth+1);
-    if(MJS_Unlikely(result))
-     return result;
     has_value = 1;
     return 0;
    break;
@@ -434,8 +461,11 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSObject 
       case MJS_TYPE_NUMBER_FLOAT:
        dynamic_type.value_float.value = *(float*)parsed_data->cache;
       break;
+      case MJS_TYPE_NUMBER_DOUBLE:
+       dynamic_type.value_double.value = *(double*)parsed_data->cache;
+      break;
       default:
-       return MJS_RESULT_INVALID_TYPE;
+       return number_type;
       break;
      }
      result = MJSObject_InsertFromPool(container, pool_index, str_size, &dynamic_type);
@@ -475,7 +505,7 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *
    break;
    case 'n':
 
-   if(memcmp(parsed_data->current, "null", 4) == 0) {
+   if(fast_memcmp_4(parsed_data->current, "null") == 0) {
      parsed_data->current += 3;
      dynamic_type.type = MJS_TYPE_NULL;
      result = MJSArray_Add(arr, &dynamic_type);
@@ -487,7 +517,7 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *
    break;
    case 't': /* might be true*/
 
-    if(memcmp(parsed_data->current, "true", 4) == 0) {
+    if(fast_memcmp_4(parsed_data->current, "true") == 0) {
      parsed_data->current += 3;
      dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 1;
@@ -500,7 +530,7 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *
    break;
    case 'f': /* might be false */
 
-    if(memcmp(parsed_data->current, "false", 5) == 0) {
+    if(fast_memcmp_5(parsed_data->current, "false") == 0) {
      parsed_data->current += 4;
      dynamic_type.type = MJS_TYPE_BOOLEAN;
      dynamic_type.value_boolean.value = 0;
@@ -546,8 +576,11 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *
      case MJS_TYPE_NUMBER_FLOAT:
       dynamic_type.value_float.value = *(float*)parsed_data->cache;
      break;
+     case MJS_TYPE_NUMBER_DOUBLE:
+      dynamic_type.value_double.value = *(double*)parsed_data->cache;
+     break;
      default:
-      return MJS_RESULT_INVALID_TYPE;
+      return number_type;
      break;
     }
     result = MJSArray_Add(arr, &dynamic_type);
@@ -563,14 +596,26 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *
     result = MJSObject_Init(&dynamic_type.value_object);
     if(MJS_Unlikely(result)) return result;
     
+    result = read_json_object(parsed_data, &dynamic_type.value_object, depth+1);
+    if(MJS_Unlikely(result)) return result;
     result = MJSArray_Add(arr, &dynamic_type);
     if(MJS_Unlikely(result)) return result;
-    result = read_json_object(parsed_data, &MJSArray_Get(arr, MJSArray_Size(arr)-1)->value_object, depth+1);
-    if(MJS_Unlikely(result))
-     return result;
     has_value = 1;
 
    break;
+
+   case '[':
+    parsed_data->sb++;
+    parsed_data->current++;
+    result = MJSArray_Init(&dynamic_type.value_array);
+    if(MJS_Unlikely(result)) return result;
+    result = read_json_array_value(parsed_data, container, &dynamic_type.value_array, depth);
+    if(MJS_Unlikely(result)) return result;
+    result = MJSArray_Add(arr, &dynamic_type);
+    if(MJS_Unlikely(result)) return result;
+    has_value = 1;
+   break;
+
    case ']':
      parsed_data->current++;
      parsed_data->sb--;
@@ -597,8 +642,11 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSObject *
       case MJS_TYPE_NUMBER_FLOAT:
        dynamic_type.value_float.value = *(float*)parsed_data->cache;
       break;
+      case MJS_TYPE_NUMBER_DOUBLE:
+       dynamic_type.value_double.value = *(double*)parsed_data->cache;
+      break;
       default:
-       return MJS_RESULT_INVALID_TYPE;
+       return number_type;
       break;
      }
      result = MJSArray_Add(arr, &dynamic_type);

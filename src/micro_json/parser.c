@@ -7,8 +7,50 @@
 #include "micro_json/parser_neon.h"
 #endif
 
-/* log2(10) */
-#define __LOG2_10 3.321928094887362
+static const double __exp10_table[40] = {
+ 0.00000000000000000001,
+ 0.0000000000000000001,
+ 0.000000000000000001,
+ 0.00000000000000001,
+ 0.0000000000000001,
+ 0.000000000000001,
+ 0.00000000000001,
+ 0.0000000000001,
+ 0.000000000001,
+ 0.00000000001,
+ 0.0000000001,
+ 0.000000001,
+ 0.00000001,
+ 0.0000001,
+ 0.000001,
+ 0.00001,
+ 0.0001,
+ 0.001,
+ 0.01,
+ 0.1,
+ 1.0,
+ 10.0,
+ 100.0,
+ 1000.0,
+ 10000.0,
+ 100000.0,
+ 1000000.0,
+ 10000000.0,
+ 100000000.0,
+ 1000000000.0,
+ 10000000000.0,
+ 100000000000.0,
+ 1000000000000.0,
+ 10000000000000.0,
+ 100000000000000.0,
+ 1000000000000000.0,
+ 10000000000000000.0,
+ 100000000000000000.0,
+ 1000000000000000000.0,
+ 10000000000000000000.0,
+};
+
+static const double *__exp10 = __exp10_table + 20;
 
 /*convert error code to string */
 MJS_COLD const char* MJS_CodeToString(signed char code) {
@@ -58,11 +100,17 @@ MJS_COLD const char* MJS_CodeToString(signed char code) {
   case MJS_RESULT_INVALID_WRITE_MODE:
    return "MJS_RESULT_INVALID_WRITE_MODE";
   break;
-  case MJE_RESULT_UNSUCCESSFUL_IO_WRITE:
+  case MJS_RESULT_UNSUCCESSFUL_IO_WRITE:
    return "MJE_RESULT_UNSUCCESSFUL_IO_WRITE";
   break;
-  case MJE_RESULT_ROOT_NOT_FOUND:
+  case MJS_RESULT_ROOT_NOT_FOUND:
    return "MJE_RESULT_ROOT_NOT_FOUND";
+  break;
+  case MJS_RESULT_TOO_LARGE_NUMBER:
+   return "MJS_RESULT_TOO_LARGE_NUMBER";
+  break;
+  case MJS_RESULT_TOO_SMALL_NUMBER:
+   return "MJS_RESULT_TOO_SMALL_NUMBER";
   break;
  }
  return "Unknown Error";
@@ -81,13 +129,13 @@ MJS_HOT int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
  while(MJS_Likely(parsed_data->current < parsed_data->end)) {
 
 #if defined(MJS_NEON)
-  if((parsed_data->cache_size+16+5) > parsed_data->cache_allocated_size) {
+  if(MJS_Unlikely((parsed_data->cache_size+16+5) > parsed_data->cache_allocated_size)) {
    result = MJSParserData_ExpandCache(parsed_data);
    if(MJS_Unlikely(result)) return result;
   }
   Neon_ParseStringToCache(parsed_data);
 #else
-  if((parsed_data->cache_size+5) > parsed_data->cache_allocated_size) {
+  if(MJS_Unlikely((parsed_data->cache_size+5) > parsed_data->cache_allocated_size)) {
    result = MJSParserData_ExpandCache(parsed_data);
    if(MJS_Unlikely(result)) return result;
   }
@@ -96,7 +144,7 @@ MJS_HOT int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
   switch(*parsed_data->current) {
    case '\\':
    
-   if((parsed_data->current+1) < parsed_data->end) {
+   if(MJS_Likely((parsed_data->current+1) < parsed_data->end)) {
    switch(*(++parsed_data->current)) {
     case '\\':
      cache_str[parsed_data->cache_size++] = '\\';
@@ -171,19 +219,20 @@ MJS_HOT int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
  since number has only very few characters,
   it does not need a vectorized function.
 */
+
 MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
  parsed_data->cache_size = 0;
  int is_float = 0;
  int is_negative = 0;
  int has_exponent = 0;
  int has_fractional = 0;
- int whole_part = 0;
- int fractional_part = 0;
- int fractional_part_count = 0;
- int exponent_part = 0;
+ int whole_count = 0;
+ MJS_Int64 whole_part = 0;
+ MJS_Int64 fractional_part = 0;
+ char fractional_part_count = 0;
+ char exponent_part = 0;
  int is_exponent_negative = 0;
 
- /* fallback to simple loop, no unroll */
  while(MJS_Likely(parsed_data->current < parsed_data->end)) {
   switch(*parsed_data->current) {
    case '-':
@@ -211,6 +260,8 @@ MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
    default:
    
     if(!MJS_IsDigit(*parsed_data->current)) {
+     goto __MJS_ParseNumberToCache_Output;
+/*
      switch(*parsed_data->current) {
       case ',':
       case '}':
@@ -221,6 +272,7 @@ MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
        goto __MJS_ParseNumberToCache_Output;
       break;
      }
+*/
     } else {
      if(has_exponent) {
       exponent_part = exponent_part * 10 + (int)(*parsed_data->current - '0');
@@ -229,6 +281,7 @@ MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
       fractional_part_count++;
      } else {
       whole_part = whole_part * 10 + (int)(*parsed_data->current - '0');
+      whole_count++;
      }
     }
    break;
@@ -239,23 +292,43 @@ MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
  __MJS_ParseNumberToCache_Output:
  
  if(is_float) {
-  /*
-  float fractional = ((float)fractional_part) * (float)pow(10.0, (double)-fractional_part_count);
-  */
-  /* NOTE : exp2 is a lot faster than pow */
-  float fractional = ((float)fractional_part) * (float)exp2(__LOG2_10 * (double)-fractional_part_count);
+  
+  /* too large for float, its double */
+  if(((whole_count + fractional_part_count) > 7) || (exponent_part > 7)) {
+   if(MJS_Unlikely(!is_exponent_negative && exponent_part > 15))
+    return MJS_RESULT_TOO_LARGE_NUMBER;
+
+   if(MJS_Unlikely(is_exponent_negative && exponent_part > 15))
+    return MJS_RESULT_TOO_SMALL_NUMBER;
+
+   fractional_part = MJS_TruncuateFractional(fractional_part, &fractional_part_count);
+   double fractional = ((double)fractional_part) * __exp10[-fractional_part_count];
+
+   double whole = (double)whole_part;
+   float final_value = 0.0;
+   if(has_exponent && exponent_part > 0)
+    final_value = (fractional + whole) * __exp10[is_exponent_negative ? -exponent_part : exponent_part];
+   else
+    final_value = whole + fractional;
+ 
+   final_value = is_negative ? -final_value : final_value;
+  
+   /* might violate strict aliasing */
+   *((double*)parsed_data->cache) = final_value;
+  
+   /* memcpy(parsed_data->cache, &final_value, sizeof(double)); */
+   parsed_data->cache_size = (unsigned int)sizeof(double);
+
+   return MJS_TYPE_NUMBER_DOUBLE;
+  }
+  
+  /* small decimals, only store to float */
+  float fractional = ((float)fractional_part) * (float)__exp10[-fractional_part_count];
 
   float whole = (float)whole_part;
   float final_value = 0.0f;
-  /*
   if(has_exponent && exponent_part > 0)
-   final_value = (whole + fractional) * (float)pow(10.0, (double)(is_exponent_negative ? -exponent_part : exponent_part));
-  else
-   final_value = whole + fractional;
-  */
-  /* NOTE : exp2 is a lot faster than pow */
-  if(has_exponent && exponent_part > 0)
-   final_value = (whole + fractional) * (float)exp2(__LOG2_10 * (double)(is_exponent_negative ? -exponent_part : exponent_part));
+   final_value = (float)(fractional + whole) * (float)__exp10[is_exponent_negative ? -exponent_part : exponent_part];
   else
    final_value = whole + fractional;
 
@@ -268,8 +341,18 @@ MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
   parsed_data->cache_size = (unsigned int)sizeof(float);
   return MJS_TYPE_NUMBER_FLOAT;
  } else {
-  whole_part = is_negative ? -whole_part : whole_part;
-
+  if(MJS_Unlikely(whole_count >= 10)) {
+   /*2,147,483,647*/
+   if(whole_count == 10)
+    if(whole_part == 2147483647) /*2 ^ 31 - 1*/
+    whole_part = is_negative ? -whole_part : whole_part;
+   else 
+     return MJS_RESULT_TOO_LARGE_NUMBER;
+   else
+    return MJS_RESULT_TOO_LARGE_NUMBER;
+  } else {
+   whole_part = is_negative ? -whole_part : whole_part;
+  }
   /* might violate strict aliasing */
   *((int*)parsed_data->cache) = whole_part;
 
@@ -406,7 +489,7 @@ MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str,
     begin_ptr++;
    break;
    default:
-    if(MJS_CheckUnicode(begin_ptr[0], begin_ptr[1])) {
+    if(MJS_Unlikely(MJS_CheckUnicode(begin_ptr[0], begin_ptr[1]))) {
      unicode = MJS_UTF8ToUnicode(begin_ptr, &advance);
      sprintf(&buff->cache[buff->cache_size], "\\u%04x", unicode);
      buff->cache_size += advance+3;
@@ -423,5 +506,20 @@ MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str,
  buff->cache[buff->cache_size++] = '\"';
 
  return 0;
+}
+
+
+MJS_HOT MJS_Int64 MJS_TruncuateFractional(MJS_Int64 fractional, char *count) {
+ char m_count = *count;
+ char diff;
+ double tmp;
+ if(m_count > 17) {
+  diff = m_count - 17;
+  tmp = (double)fractional;
+  tmp *= __exp10[-(m_count - diff)];
+  *count = diff;
+  return (MJS_Int64)tmp;
+ }
+ return fractional;
 }
 
