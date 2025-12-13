@@ -151,18 +151,11 @@ struct MJSParsedData {
  unsigned char *cache;
 
  const char *current;
- const char *begin;
  const char *end;
 
+ unsigned int cl;
  unsigned int cache_allocated_size;
-
- unsigned int cl; /*current line*/
- unsigned int cb; /*curly brackets*/
- unsigned int sb; /*square brackets*/
- unsigned int dq; /*double quote*/
- unsigned int nested;
-
- unsigned short cache_size;
+ unsigned int cache_size;
 };
 
 
@@ -178,16 +171,16 @@ struct MJSTokenResult {
 
 /*-----------------Output Stream buffer-------------------*/
 struct MJSOutputStreamBuffer {
- FILE          *file_ptr;
- char          *buff;
- char         *cache;
+ FILE           *file_ptr;
+ char           *buff;
+ char           *cache;
  
- unsigned int  buff_size;
+ unsigned int   buff_size;
 
- unsigned int cache_size;
- unsigned int cache_allocated_size;
- unsigned short  buff_reserve;
- unsigned char mode;
+ unsigned int   cache_size;
+ unsigned int   cache_allocated_size;
+ unsigned short buff_reserve;
+ unsigned char  mode;
 };
 
 
