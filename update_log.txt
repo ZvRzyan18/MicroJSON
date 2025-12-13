@@ -1,4 +1,42 @@
+# micro_json 0.0.9
+
+• reduce branches for detecting errors
+
+• stop detecting for duplicate keys
+
+• switch from do-while to while loop in object insertion
+
+• minimized inline to a large functions (for better cache efficiency)
+
+• optimize branches from object impl
+
+• implement portable count trailing zeroes
+
+• minimize other possible branches
+
+• revise arm neon code
+
+• use inline as the base implementation of objects
+
+• rewrite the token functions
+
+• optimized with more performance
+
+• add lowercase converter into uppercase for hex
+
 # micro_json 0.0.8
+
+• standardize one function "MJS_TokenParse"
+
+• remove start token
+
+• add include guard in vectorize header
+
+• take advantage the inline optimization
+
+• fix integer (number) range checker
+
+• fix bug in fast_memcmp
 
 • use compiler extension for 64 bit int 
 
