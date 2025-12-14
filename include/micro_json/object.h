@@ -148,20 +148,16 @@ struct MJSObjectPair {
 /* main container of json parsed data */
 struct MJSParsedData {
  MJSObject    container;
- unsigned char *cache;
 
  const char *current;
  const char *end;
 
  unsigned int cl;
- unsigned int cache_allocated_size;
- unsigned int cache_size;
 };
 
 
 MJS_COLD int MJSParserData_Init(MJSParsedData *parsed_data);
 MJS_COLD int MJSParserData_Destroy(MJSParsedData *parsed_data);
-MJS_HOT int MJSParserData_ExpandCache(MJSParsedData *parsed_data);
 
 /*-----------------Parsed result-------------------*/
 struct MJSTokenResult {
