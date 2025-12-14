@@ -252,14 +252,6 @@ MJS_COLD int MJSParserData_Destroy(MJSParsedData *parsed_data) {
 }
 
 
-MJS_HOT int MJSParserData_ExpandCache(MJSParsedData *parsed_data) {
- if(MJS_Unlikely(!parsed_data))
-  return MJS_RESULT_NULL_POINTER;
-  
- return MJSParserData_ExpandCache_IMPL(parsed_data);
-}
-
-
 /*-----------------MJSOutputStreamBuffer_Init-------------------*/
 MJS_COLD int MJSOutputStreamBuffer_Init(MJSOutputStreamBuffer *buff, unsigned char mode, FILE* fp) {
  if(MJS_Unlikely(!buff))

@@ -50,22 +50,21 @@ MJS_INLINE int MJS_UnicodeToChar(unsigned int unicode, char *out, unsigned int c
 }
 
 /* parse unicode hexadecimal */
-MJS_INLINE int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data) {
-
+MJS_INLINE int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data, MJSObject *obj) {
+ int result = 0;
  unsigned int value;
  
  const char c0 = *(parsed_data->current++);
-  if(MJS_Unlikely((c0 < '0' && c0 > '9') || (c0 < 'a' && c0 > 'f') || (c0 < 'A' && c0 > 'F')))
-   return MJS_RESULT_INVALID_HEX_VALUE;
+ result = ((c0 < '0' && c0 > '9') || (c0 < 'a' && c0 > 'f') || (c0 < 'A' && c0 > 'F')) * MJS_RESULT_INVALID_HEX_VALUE;
+ 
  const char c1 = *(parsed_data->current++);
-  if(MJS_Unlikely((c1 < '0' && c1 > '9') || (c1 < 'a' && c1 > 'f') || (c1 < 'A' && c1 > 'F')))
-   return MJS_RESULT_INVALID_HEX_VALUE;
+ result = result ? result : (((c1 < '0' && c1 > '9') || (c1 < 'a' && c1 > 'f') || (c1 < 'A' && c1 > 'F')) * MJS_RESULT_INVALID_HEX_VALUE);
+
  const char c2 = *(parsed_data->current++);
-  if(MJS_Unlikely((c2 < '0' && c2 > '9') || (c2 < 'a' && c2 > 'f') || (c2 < 'A' && c2 > 'F')))
-   return MJS_RESULT_INVALID_HEX_VALUE;
+ result = result ? result : (((c2 < '0' && c2 > '9') || (c2 < 'a' && c2 > 'f') || (c2 < 'A' && c2 > 'F')) * MJS_RESULT_INVALID_HEX_VALUE);
+
  const char c3 = *(parsed_data->current);
-  if(MJS_Unlikely((c3 < '0' && c3 > '9') || (c3 < 'a' && c3 > 'f') || (c3 < 'A' && c3 > 'F')))
-   return MJS_RESULT_INVALID_HEX_VALUE;
+ result = result ? result : (((c3 < '0' && c3 > '9') || (c3 < 'a' && c3 > 'f') || (c3 < 'A' && c3 > 'F')) * MJS_RESULT_INVALID_HEX_VALUE);
 
  
  value = (mjs__hex_table[(int)c0] << 12) 
@@ -73,8 +72,8 @@ MJS_INLINE int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data) {
        | (mjs__hex_table[(int)c2] << 4)
        | (mjs__hex_table[(int)c3]);
   
-  parsed_data->cache_size += MJS_UnicodeToChar(value, (char*)parsed_data->cache, parsed_data->cache_size);
- return 0;
+ obj->string_pool_size += MJS_UnicodeToChar(value, obj->string_pool, obj->string_pool_size);
+ return result;
 }
 
 
@@ -115,14 +114,13 @@ MJS_INLINE MJS_Int64 MJS_TruncuateFractional(MJS_Int64 fractional, char *count) 
 }
 
 
-/* parse number and write it into cache */
-MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data);
-
-/* parse string to cache */
-MJS_HOT int MJS_ParseStringToCache(MJSParsedData *parsed_data);
-
-/* write string to cache */
 MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str, unsigned int str_size);
+
+/* parse number and write it into cache */
+MJS_HOT int MJS_ParseNumber(MJSParsedData *parsed_data, MJSDynamicType *type);
+
+/* parse string to pool */
+MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj, unsigned int *_index, unsigned int *_size);
 
 
 #endif

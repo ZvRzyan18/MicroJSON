@@ -13,7 +13,8 @@
  minimized branches vector,
  optimized for large strings.
 */
-MJS_INLINE void Neon_ParseStringToCache(MJSParsedData *parsed_data) {
+
+MJS_INLINE void Neon_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj) {
  const int8x16_t back_slash_16 = vdupq_n_s8('\\');
  const int8x16_t new_line_16 = vdupq_n_s8('\n');
  const int8x16_t double_quote_16 = vdupq_n_s8('\"');
@@ -25,6 +26,8 @@ MJS_INLINE void Neon_ParseStringToCache(MJSParsedData *parsed_data) {
  
  uint8x16_t tmp1, tmp2, tmp3;
  
+ 
+ const char *prev_curr = NULL;
  /* process 16 characters in one iteration */
  while((parsed_data->current+16) < parsed_data->end && !Neon_AnyOf_s16(is_equal_16)) {
   current_16 = vld1q_s8((const signed char*)parsed_data->current);
@@ -38,16 +41,16 @@ MJS_INLINE void Neon_ParseStringToCache(MJSParsedData *parsed_data) {
 
   increment = Neon_FirstNonZeroIndex(is_equal_16);
   
-  vst1q_s8((signed char*)&parsed_data->cache[parsed_data->cache_size], current_16);
+  vst1q_s8((signed char*)&obj->string_pool[obj->string_pool_size], current_16);
 
-  parsed_data->cache_size += increment;
+  prev_curr = parsed_data->current;
+
+  obj->string_pool_size += increment;
   parsed_data->current += increment;
 
  }
- if(increment != 16) {
-  parsed_data->current--;
-  parsed_data->cache_size--;
- }
+ parsed_data->current = (increment != 16) ? parsed_data->current-1 : parsed_data->current;
+ obj->string_pool_size = (increment != 16) ? obj->string_pool_size-1 : obj->string_pool_size;
 }
 
 #endif

@@ -1,4 +1,5 @@
 #include "micro_json/parser.h"
+#include "micro_json/object_impl.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -49,14 +50,14 @@ static const double mjs__exp10_table[40] = {
 const double *mjs__exp10 = mjs__exp10_table + 20;
 
 const unsigned char mjs__bruijin_numbers[32] = {
-  0, 1, 28, 2, 29, 
-  14, 24, 3, 30, 
-  22, 20, 15, 25, 
-  17, 4, 8, 31, 
-  27, 13, 23, 21, 
-  19, 16, 7, 26, 
-  12, 18, 6, 11, 
-  5, 10, 9
+ 0, 1, 28, 2, 29, 
+ 14, 24, 3, 30,  
+ 22, 20, 15, 25, 
+ 17, 4, 8, 31, 
+ 27, 13, 23, 21, 
+ 19, 16, 7, 26, 
+ 12, 18, 6, 11, 
+ 5, 10, 9
 };
  
 const char mjs__hex_table[255] = {
@@ -168,89 +169,6 @@ MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str,
 
 
 /*
- TODO : Optimize it for large strings
- minimize loop and switch branches.
-*/
-MJS_HOT int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
- parsed_data->cache_size = 0;
- int result;
- char *cache_str = (char*)parsed_data->cache;
- 
- while(parsed_data->current < parsed_data->end) {
-
-#if defined(MJS_NEON)
-  if(MJS_Unlikely((parsed_data->cache_size+16+5) > parsed_data->cache_allocated_size)) {
-   result = MJSParserData_ExpandCache(parsed_data);
-   if(MJS_Unlikely(result)) return result;
-  }
-  Neon_ParseStringToCache(parsed_data);
-#else
-  if(MJS_Unlikely((parsed_data->cache_size+5) > parsed_data->cache_allocated_size)) {
-   result = MJSParserData_ExpandCache(parsed_data);
-   if(MJS_Unlikely(result)) return result;
-  }
-#endif
-
-  switch(*parsed_data->current) {
-   case '\\':
-   
-   if(MJS_Likely((parsed_data->current+1) < parsed_data->end)) {
-   switch(*(++parsed_data->current)) {
-    case '\\':
-     cache_str[parsed_data->cache_size++] = '\\';
-    break;
-    case 'n':
-     cache_str[parsed_data->cache_size++] = '\n';
-    break;
-    case '\"':
-     cache_str[parsed_data->cache_size++] = '\"';
-    break;
-    case 'b':
-     cache_str[parsed_data->cache_size++] = '\b';
-    break;
-    case 'r':
-     cache_str[parsed_data->cache_size++] = '\r';
-    break;
-    case 't':
-     cache_str[parsed_data->cache_size++] = '\t';
-    break;
-    case 'u': /*unicode*/
-    
-     /* avoid overflow access  */
-     if(MJS_Unlikely((parsed_data->current+4) >= parsed_data->end))
-      return MJS_RESULT_INCOMPLETE_STRING_SYNTAX;
-     
-     parsed_data->current++;
-     result = MJS_ReadUnicodeHexadecimal(parsed_data);
-     if(MJS_Unlikely(result)) return result;
-    break;
-    default:
-     return MJS_RESULT_INVALID_ESCAPE_SEQUENCE;
-    break;
-   }
-   }
-   
-   break;
-   case '\"':
-    goto __MJS_ParseStringToCache_finish;
-   break;
-   case '\n':
-    return MJS_RESULT_INVALID_STRING_CHARACTER;
-   break;
-   default:
-    cache_str[parsed_data->cache_size++] = *parsed_data->current;
-   break;
-  }
-  
-  parsed_data->current++;
- }
- __MJS_ParseStringToCache_finish:
- cache_str[parsed_data->cache_size] = '\0';
- return 0;
-}
-
-
-/*
  supported format
  • 12 (int)
  • -3 (int)
@@ -264,7 +182,7 @@ MJS_HOT int MJS_ParseStringToCache(MJSParsedData *parsed_data) {
   it does not need a vectorized function.
 */
 
-MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
+MJS_HOT int MJS_ParseNumber(MJSParsedData *parsed_data, MJSDynamicType *type) {
 
 #define MJS_IS_FLOAT             0b00000001
 #define MJS_IS_NEGATIVE          0b00000010
@@ -347,11 +265,15 @@ MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
   final_value = (bool_state & MJS_IS_NEGATIVE) ? -final_value : final_value;
  
   if(((whole_count + fractional_part_count) <= 7) && (exponent_part <= 7)) {
-   *((float*)parsed_data->cache) = (float)final_value;
-   return MJS_TYPE_NUMBER_FLOAT;
+   /**((float*)parsed_data->cache) = (float)final_value;*/
+   type->type = MJS_TYPE_NUMBER_FLOAT;
+   type->value_float.value = (float)final_value;
+   return 0;
   } else {
-   *((double*)parsed_data->cache) = final_value;
-   return MJS_TYPE_NUMBER_DOUBLE;
+   /**((double*)parsed_data->cache) = final_value;*/
+   type->type = MJS_TYPE_NUMBER_DOUBLE;
+   type->value_double.value = final_value;
+   return 0;
   }
  } else {
   if(MJS_Unlikely(whole_count >= 10)) {
@@ -366,11 +288,99 @@ MJS_HOT int MJS_ParseNumberToCache(MJSParsedData *parsed_data) {
   } else {
    whole_part = (bool_state & MJS_IS_NEGATIVE) ? -whole_part : whole_part;
   }
-  *((int*)parsed_data->cache) = whole_part;
-  return MJS_TYPE_NUMBER_INT;
+  /**((int*)parsed_data->cache) = whole_part;*/
+  type->type = MJS_TYPE_NUMBER_INT;
+  type->value_int.value = whole_part;
+  return 0;
  }
  return 0;
 }
 
+/*
+ minimize the overhead of copy
+*/
+MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj, unsigned int *_index, unsigned int *_size) {
+ int result;
+ *_index = obj->string_pool_size;
+ unsigned int m_index = obj->string_pool_size;
+ unsigned int diff = 0;
+ while(parsed_data->current < parsed_data->end) {
+
+
+#if defined(MJS_NEON)
+  if(MJS_Unlikely(obj->string_pool_reserve < 5+16)) {
+   result = MJSObject_ExpandPool_IMPL(obj);
+   if(MJS_Unlikely(result)) return result;
+  }
+  Neon_ParseStringToPool(parsed_data, obj);
+#else
+  if(MJS_Unlikely(obj->string_pool_reserve < 5)) {
+   result = MJSObject_ExpandPool_IMPL(obj);
+   if(MJS_Unlikely(result)) return result;
+  }
+#endif
+
+  switch(*parsed_data->current) {
+   case '\\':
+   
+   if(MJS_Likely((parsed_data->current+1) < parsed_data->end)) {
+   switch(*(++parsed_data->current)) {
+    case '\\':
+     obj->string_pool[obj->string_pool_size++] = '\\';
+    break;
+    case 'n':
+     obj->string_pool[obj->string_pool_size++] = '\n';
+    break;
+    case '\"':
+     obj->string_pool[obj->string_pool_size++] = '\"';
+    break;
+    case 'b':
+     obj->string_pool[obj->string_pool_size++] = '\b';
+    break;
+    case 'r':
+     obj->string_pool[obj->string_pool_size++] = '\r';
+    break;
+    case 't':
+     obj->string_pool[obj->string_pool_size++] = '\t';
+    break;
+    case 'u': /*unicode*/
+    
+     /* avoid overflow access  */
+     if(MJS_Unlikely((parsed_data->current+4) >= parsed_data->end))
+      return MJS_RESULT_INCOMPLETE_STRING_SYNTAX;
+     
+     parsed_data->current++;
+     result = MJS_ReadUnicodeHexadecimal(parsed_data, obj);
+     if(MJS_Unlikely(result)) return result;
+    break;
+    default:
+     return MJS_RESULT_INVALID_ESCAPE_SEQUENCE;
+    break;
+   }
+   }
+   
+   break;
+   case '\"':
+    goto __MJS_ParseStringToCache_finish;
+   break;
+   case '\n':
+    return MJS_RESULT_INVALID_STRING_CHARACTER;
+   break;
+   default:
+    obj->string_pool[obj->string_pool_size++] = *parsed_data->current;
+   break;
+  }
+  
+  diff = obj->string_pool_size - m_index;
+  obj->string_pool_reserve -= diff;
+  m_index += diff;
+  parsed_data->current++;
+ }
+ __MJS_ParseStringToCache_finish:
+ *_size = (obj->string_pool_size - *_index);
+ obj->string_pool[obj->string_pool_size++] = '\0';
+ obj->string_pool_reserve--;
+ return 0;
+}
 
 

@@ -8,7 +8,6 @@
  devices.
 */
 
-
 MJS_INLINE int Neon_AnyOf_s8(uint8x8_t x) {
  return !!(*((uint64_t*)&x));
 }
