@@ -1,3 +1,11 @@
+# micro_json 0.1.0
+
+• stop reliance on cache when parsing json string
+
+• optimize number reading, eliminating switch statement
+
+• branchless checking for hex char to int
+
 # micro_json 0.0.9
 
 • reduce branches for detecting errors
