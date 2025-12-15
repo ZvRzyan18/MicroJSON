@@ -38,7 +38,6 @@ MJS_INLINE unsigned short MJS_CountTrailingZeroes(unsigned short x) {
 
 #else
 
-/* TODO : static assert, needs to be at least 64 bits */
 typedef long int MJS_Int64;
 typedef unsigned long int MJS_Uint64;
 
@@ -49,7 +48,7 @@ typedef unsigned long int MJS_Uint64;
 
 #define MJS_INLINE static
 
-/* Bruijn algoritm */
+
 MJS_INLINE unsigned short MJS_CountTrailingZeroes(unsigned short x) {
  return (unsigned short)mjs__bruijin_numbers[((x & -x) * 0x077CB531u) >> 27];
 }
@@ -91,7 +90,7 @@ typedef enum {
  MJS_RESULT_INVALID_TYPE = -5,
  MJS_RESULT_REACHED_MAX_NESTED_DEPTH = -6,
  MJS_RESULT_EMPTY_KEY = -7,
- MJS_RESULT_DUPLICATE_KEY = -8,
+ MJS_RESULT_DUPLICATE_KEY = -8, /* currently skipped */
  MJS_RESULT_INCOMPLETE_STRING_SYNTAX = -9,
  MJS_RESULT_INVALID_ESCAPE_SEQUENCE = -10,
  MJS_RESULT_INVALID_HEX_VALUE = -11,
@@ -107,8 +106,8 @@ typedef enum {
 /*
  limits
 */
-#define MJS_MAX_CACHE_BYTES       32
-#define MJS_MAX_RESERVE_BYTES     16
+
+#define MJS_MAX_RESERVE_BYTES     64
 #define MJS_MAX_RESERVE_ELEMENTS  8
 #define MJS_MAX_NESTED_VALUE      10
 #define MJS_MAX_HASH_BUCKETS      8
@@ -147,7 +146,7 @@ MJS_INLINE const char* MJS_CodeToString(signed char code) {
   case MJS_RESULT_EMPTY_KEY:
    return "MJS_RESULT_EMPTY_KEY";
   break;
-  case MJS_RESULT_DUPLICATE_KEY:
+  case MJS_RESULT_DUPLICATE_KEY: /* currently skipped */
    return "MJS_RESULT_DUPLICATE_KEY";
   break;
   case MJS_RESULT_INCOMPLETE_STRING_SYNTAX:

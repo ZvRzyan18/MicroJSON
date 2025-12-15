@@ -101,47 +101,12 @@ MJS_INLINE unsigned int MJS_FastMemcmp(const char* a, const char *b, unsigned in
 */
 MJS_INLINE unsigned int MJS_Search_FromPool(const char* a, unsigned int str_size_a, const char *b, unsigned int str_size_b) {
  const char *end = a + str_size_a;
-
  const unsigned int size_b_1 = str_size_b + 1;
- 
  while(a < end && ((a + size_b_1) < end)) {
   if(!MJS_FastMemcmp(a, b, size_b_1)) return (unsigned int)(end-a);
   a++;
  }
  return 0xFFFFFFFF;
-}
-
-
-/*
- init pair elements
-*/
-MJS_INLINE void init_pair(MJSObjectPair *ptr, unsigned int m_size) {
- MJSObjectPair *_begin = ptr;
- MJSObjectPair *_end = ptr + m_size;
-
- while((_begin+4) < _end) {
-  _begin->key_pool_index = 0xFFFFFFFF;
-  _begin->value.type = 0xFF;
-  _begin++;
-
-  _begin->key_pool_index = 0xFFFFFFFF;
-  _begin->value.type = 0xFF;
-  _begin++;
-
-  _begin->key_pool_index = 0xFFFFFFFF;
-  _begin->value.type = 0xFF;
-  _begin++;
-
-  _begin->key_pool_index = 0xFFFFFFFF;
-  _begin->value.type = 0xFF;
-  _begin++;
- }
- 
- while(_begin < _end) {
-  _begin->key_pool_index = 0xFFFFFFFF;
-  _begin->value.type = 0xFF;
-  _begin++;
- }
 }
 
 
@@ -198,7 +163,7 @@ static MJS_HOT int MJSArray_Destroy_IMPL(MJSArray *arr) {
 /*
  add to MJSArray object, return 0 if success, return -1 if not.
 */
-static MJS_HOT int MJSArray_Add_IMPL(MJSArray *arr, MJSDynamicType *value) {
+MJS_HOT static int MJSArray_Add_IMPL(MJSArray *arr, MJSDynamicType *value) {
  if(arr->reserve > 0) {
   arr->dynamic_type_ptr[arr->size++] = *value;
   arr->reserve--;
@@ -221,19 +186,19 @@ static MJS_HOT int MJSArray_Add_IMPL(MJSArray *arr, MJSDynamicType *value) {
 /*
  get element ptr from MJSArray object, return ptr if success, return NULL if not.
 */
-static MJS_HOT MJSDynamicType* MJSArray_Get_IMPL(MJSArray *arr, unsigned int index) {
+MJS_INLINE MJSDynamicType* MJSArray_Get_IMPL(MJSArray *arr, unsigned int index) {
  return &arr->dynamic_type_ptr[index];
 }
 
 /*
  get size from MJSArray object, return size if success, return 0xFFFFFFFF if not.
 */
-static MJS_HOT unsigned int MJSArray_Size_IMPL(MJSArray *arr) {
+MJS_INLINE unsigned int MJSArray_Size_IMPL(MJSArray *arr) {
  return arr->size;
 }
 
 
-static MJS_HOT int MJSArray_AddString_IMPL(MJSArray *arr, MJSObject *parent, const char *str) {
+MJS_INLINE int MJSArray_AddString_IMPL(MJSArray *arr, MJSObject *parent, const char *str) {
  MJSDynamicType str_obj;
  str_obj.type = MJS_TYPE_STRING;
  str_obj.value_string.str_size = (unsigned int)strlen(str);
@@ -243,7 +208,7 @@ static MJS_HOT int MJSArray_AddString_IMPL(MJSArray *arr, MJSObject *parent, con
 }
 
 
-static MJS_HOT const char* MJSArray_GetString_IMPL(MJSArray *arr, MJSObject *parent, unsigned int index) {
+MJS_INLINE const char* MJSArray_GetString_IMPL(MJSArray *arr, MJSObject *parent, unsigned int index) {
  assert((index < arr->size && index >= 0) && "out of bounds");
  MJSDynamicType *type = MJSArray_Get_IMPL(arr, index);
  assert(type->type == MJS_TYPE_STRING && "not a string");
@@ -251,14 +216,14 @@ static MJS_HOT const char* MJSArray_GetString_IMPL(MJSArray *arr, MJSObject *par
 }
 
 
-static MJS_HOT int MJSArray_AddObject_IMPL(MJSArray *arr, MJSObject *obj) {
+MJS_INLINE int MJSArray_AddObject_IMPL(MJSArray *arr, MJSObject *obj) {
  MJSDynamicType obj_type;
  obj_type.value_object = *obj;
  return MJSArray_Add_IMPL(arr, &obj_type);
 }
 
 
-static MJS_HOT MJSObject* MJSArray_GetObject_IMPL(MJSArray *arr, unsigned int index) {
+MJS_INLINE MJSObject* MJSArray_GetObject_IMPL(MJSArray *arr, unsigned int index) {
  assert((index < arr->size && index >= 0) && "out of bounds");
  MJSDynamicType *type = MJSArray_Get_IMPL(arr, index);
  assert(type->type == MJS_TYPE_OBJECT && "not an object");
@@ -266,7 +231,7 @@ static MJS_HOT MJSObject* MJSArray_GetObject_IMPL(MJSArray *arr, unsigned int in
 }
 
 
-static MJS_HOT int MJSArray_AddInt_IMPL(MJSArray *arr, int _int_type) {
+MJS_INLINE int MJSArray_AddInt_IMPL(MJSArray *arr, int _int_type) {
  MJSDynamicType int_obj;
  int_obj.type = MJS_TYPE_NUMBER_INT;
  int_obj.value_int.value = _int_type;
@@ -274,7 +239,7 @@ static MJS_HOT int MJSArray_AddInt_IMPL(MJSArray *arr, int _int_type) {
 }
 
 
-static MJS_HOT int MJSArray_GetInt_IMPL(MJSArray *arr, unsigned int index) {
+MJS_INLINE int MJSArray_GetInt_IMPL(MJSArray *arr, unsigned int index) {
  assert((index < arr->size && index >= 0) && "out of bounds");
  MJSDynamicType *type = MJSArray_Get_IMPL(arr, index);
  assert(type->type == MJS_TYPE_NUMBER_INT && "not an integer");
@@ -282,7 +247,7 @@ static MJS_HOT int MJSArray_GetInt_IMPL(MJSArray *arr, unsigned int index) {
 }
 
 
-static MJS_HOT int MJSArray_AddFloat_IMPL(MJSArray *arr, float _float_type) {
+MJS_INLINE int MJSArray_AddFloat_IMPL(MJSArray *arr, float _float_type) {
  MJSDynamicType float_obj;
  float_obj.type = MJS_TYPE_NUMBER_FLOAT;
  float_obj.value_float.value = _float_type;
@@ -290,7 +255,7 @@ static MJS_HOT int MJSArray_AddFloat_IMPL(MJSArray *arr, float _float_type) {
 }
 
 
-static MJS_HOT float MJSArray_GetFloat_IMPL(MJSArray *arr, unsigned int index) {
+MJS_INLINE float MJSArray_GetFloat_IMPL(MJSArray *arr, unsigned int index) {
  assert((index < arr->size && index >= 0) && "out of bounds");
  MJSDynamicType *type = MJSArray_Get_IMPL(arr, index);
  assert(type->type == MJS_TYPE_NUMBER_FLOAT && "not a float");
@@ -298,7 +263,7 @@ static MJS_HOT float MJSArray_GetFloat_IMPL(MJSArray *arr, unsigned int index) {
 }
 
 
-static MJS_HOT int MJSArray_AddBoolean_IMPL(MJSArray *arr, int _bool_type) {
+MJS_INLINE int MJSArray_AddBoolean_IMPL(MJSArray *arr, int _bool_type) {
  MJSDynamicType bool_obj;
  bool_obj.type = MJS_TYPE_NUMBER_FLOAT;
  bool_obj.value_boolean.value = _bool_type;
@@ -306,7 +271,7 @@ static MJS_HOT int MJSArray_AddBoolean_IMPL(MJSArray *arr, int _bool_type) {
 }
 
 
-static MJS_HOT int MJSArray_GetBoolean_IMPL(MJSArray *arr, unsigned int index) {
+MJS_INLINE int MJSArray_GetBoolean_IMPL(MJSArray *arr, unsigned int index) {
  assert((index < arr->size && index >= 0) && "out of bounds");
  MJSDynamicType *type = MJSArray_Get_IMPL(arr, index);
  assert(type->type == MJS_TYPE_NUMBER_INT && "not a boolean");
@@ -314,14 +279,14 @@ static MJS_HOT int MJSArray_GetBoolean_IMPL(MJSArray *arr, unsigned int index) {
 }
 
 
-static MJS_HOT int MJSArray_AddArray_IMPL(MJSArray *arr, MJSArray *arr_input) {
+MJS_INLINE int MJSArray_AddArray_IMPL(MJSArray *arr, MJSArray *arr_input) {
  MJSDynamicType arr_type;
  arr_type.value_array = *arr_input;
  return MJSArray_Add_IMPL(arr, &arr_type);
 }
 
 
-static MJS_HOT MJSArray* MJSArray_GetArray_IMPL(MJSArray *arr, unsigned int index) {
+MJS_INLINE MJSArray* MJSArray_GetArray_IMPL(MJSArray *arr, unsigned int index) {
  assert((index < arr->size && index >= 0) && "out of bounds");
  MJSDynamicType *type = MJSArray_Get_IMPL(arr, index);
  assert(type->type == MJS_TYPE_ARRAY && "not an array");
@@ -332,14 +297,11 @@ static MJS_HOT MJSArray* MJSArray_GetArray_IMPL(MJSArray *arr, unsigned int inde
 
 static MJS_HOT int MJSObject_Init_IMPL(MJSObject *container) {
  int result = 0;
- const unsigned int pre_allocated_pair = (MJS_MAX_HASH_BUCKETS + MJS_MAX_RESERVE_ELEMENTS);
- container->obj_pair_ptr = (MJSObjectPair*)__aligned_alloc(sizeof(MJSObjectPair) * pre_allocated_pair);
+ const unsigned int pre_allocated_pair = sizeof(MJSObjectPair) * (MJS_MAX_HASH_BUCKETS + MJS_MAX_RESERVE_ELEMENTS);
+ container->obj_pair_ptr = (MJSObjectPair*)__aligned_alloc(pre_allocated_pair);
  result = !container->obj_pair_ptr * MJS_RESULT_ALLOCATION_FAILED;
  if(MJS_Likely(!result))
- init_pair(container->obj_pair_ptr, pre_allocated_pair);
- /*
  memset(container->obj_pair_ptr, 0xFF, pre_allocated_pair);
- */
  container->type = MJS_TYPE_OBJECT;
  container->reserve = MJS_MAX_RESERVE_ELEMENTS;
  container->string_pool = (char*)__aligned_alloc(MJS_MAX_RESERVE_BYTES);
@@ -386,7 +348,7 @@ static MJS_HOT int MJSObject_Destroy_IMPL(MJSObject *container) {
 
 
 
-static MJS_HOT int MJSObject_InsertFromPool_IMPL(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value) {
+MJS_HOT static int MJSObject_InsertFromPool_IMPL(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value) {
  if(MJS_Unlikely(!str_size))
   return MJS_RESULT_EMPTY_KEY;
   
@@ -406,10 +368,8 @@ static MJS_HOT int MJSObject_InsertFromPool_IMPL(MJSObject *container, unsigned 
   container->obj_pair_ptr = (MJSObjectPair*)__aligned_realloc(container->obj_pair_ptr, (max_size + MJS_MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair));
   if(MJS_Unlikely(!container->obj_pair_ptr))
    return MJS_RESULT_ALLOCATION_FAILED;
-  init_pair(&container->obj_pair_ptr[max_size], MJS_MAX_RESERVE_ELEMENTS);
-  /*
+
 		memset(&container->obj_pair_ptr[max_size], 0xFF, MJS_MAX_RESERVE_ELEMENTS * sizeof(MJSObjectPair));
-		*/
 	 container->reserve = MJS_MAX_RESERVE_ELEMENTS;
 	}
  
@@ -452,7 +412,7 @@ static MJS_HOT int MJSObject_InsertFromPool_IMPL(MJSObject *container, unsigned 
 }
 
 
-static MJS_HOT int MJSObject_Insert_IMPL(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value) { 
+MJS_INLINE int MJSObject_Insert_IMPL(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value) { 
  if(MJS_Unlikely(!key[0])) /* empty key */
   return MJS_RESULT_EMPTY_KEY;
 
@@ -470,10 +430,7 @@ static MJS_HOT int MJSObject_Insert_IMPL(MJSObject *container, const char *key, 
   container->obj_pair_ptr = (MJSObjectPair*)__aligned_realloc(container->obj_pair_ptr, (max_size + MJS_MAX_RESERVE_ELEMENTS) * sizeof(MJSObjectPair));
   if(MJS_Unlikely(!container->obj_pair_ptr))
    return MJS_RESULT_ALLOCATION_FAILED;
-  init_pair(&container->obj_pair_ptr[max_size], MJS_MAX_RESERVE_ELEMENTS);
-  /*
 		memset(&container->obj_pair_ptr[max_size], 0xFF, MJS_MAX_RESERVE_ELEMENTS * sizeof(MJSObjectPair));
-		*/
 	 container->reserve = MJS_MAX_RESERVE_ELEMENTS;
 	}
  
@@ -519,7 +476,7 @@ static MJS_HOT int MJSObject_Insert_IMPL(MJSObject *container, const char *key, 
 }
 
 
-static MJS_HOT MJSDynamicType* MJSObject_Get_IMPL(MJSObject *container, const char *key, unsigned int str_size) {  
+MJS_INLINE MJSDynamicType* MJSObject_Get_IMPL(MJSObject *container, const char *key, unsigned int str_size) {  
  const unsigned int key_len = str_size;
  const unsigned int hash_index = generate_hash_index(key, key_len);
 
@@ -539,7 +496,7 @@ static MJS_HOT MJSDynamicType* MJSObject_Get_IMPL(MJSObject *container, const ch
 }
 
 
-static MJS_HOT MJSDynamicType* MJSObject_GetFromPool_IMPL(MJSObject *container, unsigned int pool_index, unsigned int str_size) {
+MJS_INLINE MJSDynamicType* MJSObject_GetFromPool_IMPL(MJSObject *container, unsigned int pool_index, unsigned int str_size) {
  const char *key = &container->string_pool[pool_index];
  const unsigned int key_len = str_size;
  const unsigned int hash_index = generate_hash_index(key, key_len);
@@ -561,9 +518,19 @@ static MJS_HOT MJSDynamicType* MJSObject_GetFromPool_IMPL(MJSObject *container, 
  return NULL;
 }
 
+/*
+ not interface 
+*/
+MJS_INLINE int MJSObject_ExpandPool_IMPL(MJSObject *container) { 
+ int result = 0;
+ container->string_pool = (char*)__aligned_realloc(container->string_pool, (container->string_pool_size + container->string_pool_reserve + MJS_MAX_RESERVE_BYTES));
+ result = !container->string_pool * MJS_RESULT_ALLOCATION_FAILED;
+ container->string_pool_reserve += MJS_MAX_RESERVE_BYTES;
+ return result;
+}
 
 
-static MJS_HOT unsigned int MJSObject_AddToStringPool_IMPL(MJSObject *container, const char *str, unsigned int str_size) { 
+MJS_INLINE unsigned int MJSObject_AddToStringPool_IMPL(MJSObject *container, const char *str, unsigned int str_size) { 
  unsigned int out_index = 0xFFFFFFFF;
  /* this allows the duplication of strings end up in the same location */
  
@@ -590,7 +557,7 @@ static MJS_HOT unsigned int MJSObject_AddToStringPool_IMPL(MJSObject *container,
   /*
    allocate a new reserve bytes
   */
-  container->string_pool = (char*)__aligned_realloc(container->string_pool, (container->string_pool_size + (str_size+1) + MJS_MAX_RESERVE_ELEMENTS));
+  container->string_pool = (char*)__aligned_realloc(container->string_pool, (container->string_pool_size + (str_size+1) + MJS_MAX_RESERVE_BYTES));
   if(MJS_Unlikely(!container->string_pool))
    return 0xFFFFFFFF;
   
@@ -599,20 +566,20 @@ static MJS_HOT unsigned int MJSObject_AddToStringPool_IMPL(MJSObject *container,
 
   out_index = container->string_pool_size;
   container->string_pool_size += str_size+1;
-  container->string_pool_reserve = MJS_MAX_RESERVE_ELEMENTS;
+  container->string_pool_reserve = MJS_MAX_RESERVE_BYTES;
   return out_index;
  }
 }
 
 
-static MJS_HOT const char* MJSObject_GetStringFromPool_IMPL(MJSObject *container, MJSString *str) {
+MJS_INLINE const char* MJSObject_GetStringFromPool_IMPL(MJSObject *container, MJSString *str) {
  return &container->string_pool[str->pool_index];
 }
 
 
 
 
-static MJS_HOT int MJSObject_InsertString_IMPL(MJSObject *container, const char *key, const char *str) {
+MJS_INLINE int MJSObject_InsertString_IMPL(MJSObject *container, const char *key, const char *str) {
  MJSDynamicType str_obj;
  str_obj.type = MJS_TYPE_STRING;
  str_obj.value_string.str_size = (unsigned int)strlen(str);
@@ -624,7 +591,7 @@ static MJS_HOT int MJSObject_InsertString_IMPL(MJSObject *container, const char 
 }
 
 
-static MJS_HOT const char* MJSObject_GetString_IMPL(MJSObject *container, const char *key) {
+MJS_INLINE const char* MJSObject_GetString_IMPL(MJSObject *container, const char *key) {
  MJSDynamicType *type = MJSObject_Get_IMPL(container, key, strlen(key));
  assert(type != NULL && "not found");
  assert(type->type == MJS_TYPE_STRING && "not a string");
@@ -632,7 +599,7 @@ static MJS_HOT const char* MJSObject_GetString_IMPL(MJSObject *container, const 
 }
 
 
-static MJS_HOT int MJSObject_InsertObject_IMPL(MJSObject *container, const char *key, MJSObject *obj) {
+MJS_INLINE int MJSObject_InsertObject_IMPL(MJSObject *container, const char *key, MJSObject *obj) {
  MJSDynamicType obj_type;
  obj_type.value_object = *obj;
 
@@ -643,7 +610,7 @@ static MJS_HOT int MJSObject_InsertObject_IMPL(MJSObject *container, const char 
 }
 
 
-static MJS_HOT MJSObject* MJSObject_GetObject_IMPL(MJSObject *container, const char *key) {
+MJS_INLINE MJSObject* MJSObject_GetObject_IMPL(MJSObject *container, const char *key) {
  MJSDynamicType *type = MJSObject_Get_IMPL(container, key, strlen(key));
  assert(type != NULL && "not found");
  assert(type->type == MJS_TYPE_OBJECT && "not an object");
@@ -651,7 +618,7 @@ static MJS_HOT MJSObject* MJSObject_GetObject_IMPL(MJSObject *container, const c
 }
 
 
-static MJS_HOT int MJSObject_InsertInt_IMPL(MJSObject *container, const char *key, int _int_type) {
+MJS_INLINE int MJSObject_InsertInt_IMPL(MJSObject *container, const char *key, int _int_type) {
  MJSDynamicType int_type;
  int_type.type = MJS_TYPE_NUMBER_INT;
  int_type.value_int.value = _int_type;
@@ -662,7 +629,7 @@ static MJS_HOT int MJSObject_InsertInt_IMPL(MJSObject *container, const char *ke
 }
 
 
-static MJS_HOT int MJSObject_GetInt_IMPL(MJSObject *container, const char *key) {
+MJS_INLINE int MJSObject_GetInt_IMPL(MJSObject *container, const char *key) {
  MJSDynamicType *type = MJSObject_Get_IMPL(container, key, strlen(key));
  assert(type != NULL && "not found");
  assert(type->type == MJS_TYPE_NUMBER_INT && "not an integer");
@@ -670,7 +637,7 @@ static MJS_HOT int MJSObject_GetInt_IMPL(MJSObject *container, const char *key) 
 }
 
 
-static MJS_HOT int MJSObject_InsertFloat_IMPL(MJSObject *container, const char *key, float _float_type) {
+MJS_INLINE int MJSObject_InsertFloat_IMPL(MJSObject *container, const char *key, float _float_type) {
  MJSDynamicType float_type;
  float_type.type = MJS_TYPE_NUMBER_FLOAT;
  float_type.value_float.value = _float_type;
@@ -681,7 +648,7 @@ static MJS_HOT int MJSObject_InsertFloat_IMPL(MJSObject *container, const char *
 }
 
 
-static MJS_HOT float MJSObject_GetFloat_IMPL(MJSObject *container, const char *key) {
+MJS_INLINE float MJSObject_GetFloat_IMPL(MJSObject *container, const char *key) {
  MJSDynamicType *type = MJSObject_Get_IMPL(container, key, strlen(key));
  assert(type != NULL && "not found");
  assert(type->type == MJS_TYPE_NUMBER_FLOAT && "not a float");
@@ -689,7 +656,7 @@ static MJS_HOT float MJSObject_GetFloat_IMPL(MJSObject *container, const char *k
 }
 
 
-static MJS_HOT int MJSObject_InsertBoolean_IMPL(MJSObject *container, const char *key, int _bool_type) {
+MJS_INLINE int MJSObject_InsertBoolean_IMPL(MJSObject *container, const char *key, int _bool_type) {
  MJSDynamicType bool_type;
  bool_type.type = MJS_TYPE_BOOLEAN;
  bool_type.value_boolean.value = _bool_type;
@@ -700,7 +667,7 @@ static MJS_HOT int MJSObject_InsertBoolean_IMPL(MJSObject *container, const char
 }
 
 
-static MJS_HOT int MJSObject_GetBoolean_IMPL(MJSObject *container, const char *key) {
+MJS_INLINE int MJSObject_GetBoolean_IMPL(MJSObject *container, const char *key) {
  MJSDynamicType *type = MJSObject_Get_IMPL(container, key, strlen(key));
  assert(type != NULL && "not found");
  assert(type->type == MJS_TYPE_BOOLEAN && "not a boolean");
@@ -708,7 +675,7 @@ static MJS_HOT int MJSObject_GetBoolean_IMPL(MJSObject *container, const char *k
 }
 
 
-static MJS_HOT int MJSObject_InsertArray_IMPL(MJSObject *container, const char *key, MJSArray *arr) {
+MJS_INLINE int MJSObject_InsertArray_IMPL(MJSObject *container, const char *key, MJSArray *arr) {
  MJSDynamicType arr_type;
  arr_type.type = MJS_TYPE_ARRAY;
  arr_type.value_array = *arr;
@@ -719,7 +686,7 @@ static MJS_HOT int MJSObject_InsertArray_IMPL(MJSObject *container, const char *
 }
 
 
-static MJS_HOT MJSArray* MJSObject_GetArray_IMPL(MJSObject *container, const char *key) {
+MJS_INLINE MJSArray* MJSObject_GetArray_IMPL(MJSObject *container, const char *key) {
  MJSDynamicType *type = MJSObject_Get_IMPL(container, key, strlen(key));
  assert(type != NULL && "not found");
  assert(type->type == MJS_TYPE_ARRAY && "not an array");
@@ -734,11 +701,6 @@ static MJS_HOT MJSArray* MJSObject_GetArray_IMPL(MJSObject *container, const cha
 */
 static MJS_HOT int MJSParserData_Init_IMPL(MJSParsedData *parsed_data) {
  memset(parsed_data, 0, sizeof(MJSParsedData));
- parsed_data->cache = (unsigned char*)__aligned_alloc(MJS_MAX_CACHE_BYTES);
- if(MJS_Unlikely(!parsed_data->cache))
-  return MJS_RESULT_ALLOCATION_FAILED;
- parsed_data->cache_allocated_size = MJS_MAX_CACHE_BYTES;
-
  return 0;
 }
 
@@ -746,21 +708,7 @@ static MJS_HOT int MJSParserData_Init_IMPL(MJSParsedData *parsed_data) {
  destroy MJSParserData, return 0 if success, return -1 if not.
 */
 static MJS_HOT int MJSParserData_Destroy_IMPL(MJSParsedData *parsed_data) {
- int result;
- result = MJSObject_Destroy(&parsed_data->container);
- if(MJS_Unlikely(result)) 
-  return result;
- __aligned_dealloc(parsed_data->cache);
- return 0;
-}
-
-
-static MJS_HOT int MJSParserData_ExpandCache_IMPL(MJSParsedData *parsed_data) {
- parsed_data->cache = (unsigned char*)__aligned_realloc(parsed_data->cache, (parsed_data->cache_allocated_size + MJS_MAX_RESERVE_BYTES));
- if(MJS_Unlikely(!parsed_data->cache))
-  return MJS_RESULT_ALLOCATION_FAILED;
- parsed_data->cache_allocated_size += MJS_MAX_RESERVE_BYTES;
- return 0;
+ return MJSObject_Destroy(&parsed_data->container);
 }
 
 

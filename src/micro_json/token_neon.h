@@ -33,8 +33,7 @@ MJS_INLINE void Neon_read_json_object(MJSParsedData *parsed_data) {
   increment = Neon_FirstNonZeroIndex(is_equal_16);
   parsed_data->current += increment;
  }
- if(increment != 16)
-  parsed_data->current--;
+ parsed_data->current = (increment != 16) ? parsed_data->current-1 : parsed_data->current;
 }
 
 
@@ -71,8 +70,7 @@ MJS_INLINE void Neon_read_json_object_value(MJSParsedData *parsed_data) {
   increment = Neon_FirstNonZeroIndex(is_equal_16);
   parsed_data->current += increment;
  }
- if(increment != 16)
-  parsed_data->current--;
+ parsed_data->current = (increment != 16) ? parsed_data->current-1 : parsed_data->current;
 }
 
 
@@ -111,8 +109,7 @@ MJS_INLINE void Neon_read_json_array_value(MJSParsedData *parsed_data) {
   parsed_data->current += increment;
 
  }
- if(increment != 16)
-  parsed_data->current--;
+ parsed_data->current = (increment != 16) ? parsed_data->current-1 : parsed_data->current;
 }
 
 
