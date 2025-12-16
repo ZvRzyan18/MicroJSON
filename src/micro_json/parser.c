@@ -299,23 +299,23 @@ MJS_HOT int MJS_ParseNumber(MJSParsedData *parsed_data, MJSDynamicType *type) {
 /*
  minimize the overhead of copy
 */
-MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj, unsigned int *_index, unsigned int *_size) {
+MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSStringPoolNode *node, unsigned int *_index, unsigned int *_size) {
  int result;
- *_index = obj->string_pool_size;
- unsigned int m_index = obj->string_pool_size;
+ *_index = node->pool_size;
+ unsigned int m_index = node->pool_size;
  unsigned int diff = 0;
  while(parsed_data->current < parsed_data->end) {
 
 
 #if defined(MJS_NEON)
-  if(MJS_Unlikely(obj->string_pool_reserve < 5+16)) {
-   result = MJSObject_ExpandPool_IMPL(obj);
+  if(MJS_Unlikely(node->pool_reserve < 5+16)) {
+   result = MJSStringPool_ExpandNode(node, MJS_MAX_RESERVE_BYTES);
    if(MJS_Unlikely(result)) return result;
   }
-  Neon_ParseStringToPool(parsed_data, obj);
+  Neon_ParseStringToPool(parsed_data, node);
 #else
-  if(MJS_Unlikely(obj->string_pool_reserve < 5)) {
-   result = MJSObject_ExpandPool_IMPL(obj);
+  if(MJS_Unlikely(node->pool_reserve < 5)) {
+   result = MJSStringPool_ExpandNode(node, MJS_MAX_RESERVE_BYTES);
    if(MJS_Unlikely(result)) return result;
   }
 #endif
@@ -326,22 +326,22 @@ MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj, un
    if(MJS_Likely((parsed_data->current+1) < parsed_data->end)) {
    switch(*(++parsed_data->current)) {
     case '\\':
-     obj->string_pool[obj->string_pool_size++] = '\\';
+     node->str[node->pool_size++] = '\\';
     break;
     case 'n':
-     obj->string_pool[obj->string_pool_size++] = '\n';
+     node->str[node->pool_size++] = '\n';
     break;
     case '\"':
-     obj->string_pool[obj->string_pool_size++] = '\"';
+     node->str[node->pool_size++] = '\"';
     break;
     case 'b':
-     obj->string_pool[obj->string_pool_size++] = '\b';
+     node->str[node->pool_size++] = '\b';
     break;
     case 'r':
-     obj->string_pool[obj->string_pool_size++] = '\r';
+     node->str[node->pool_size++] = '\r';
     break;
     case 't':
-     obj->string_pool[obj->string_pool_size++] = '\t';
+     node->str[node->pool_size++] = '\t';
     break;
     case 'u': /*unicode*/
     
@@ -350,7 +350,7 @@ MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj, un
       return MJS_RESULT_INCOMPLETE_STRING_SYNTAX;
      
      parsed_data->current++;
-     result = MJS_ReadUnicodeHexadecimal(parsed_data, obj);
+     result = MJS_ReadUnicodeHexadecimal(parsed_data, node);
      if(MJS_Unlikely(result)) return result;
     break;
     default:
@@ -367,19 +367,19 @@ MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj, un
     return MJS_RESULT_INVALID_STRING_CHARACTER;
    break;
    default:
-    obj->string_pool[obj->string_pool_size++] = *parsed_data->current;
+    node->str[node->pool_size++] = *parsed_data->current;
    break;
   }
   
-  diff = obj->string_pool_size - m_index;
-  obj->string_pool_reserve -= diff;
+  diff = node->pool_size - m_index;
+  node->pool_reserve -= diff;
   m_index += diff;
   parsed_data->current++;
  }
  __MJS_ParseStringToCache_finish:
- *_size = (obj->string_pool_size - *_index);
- obj->string_pool[obj->string_pool_size++] = '\0';
- obj->string_pool_reserve--;
+ *_size = (node->pool_size - (*_index));
+ node->str[node->pool_size++] = '\0';
+ node->pool_reserve--;
  return 0;
 }
 

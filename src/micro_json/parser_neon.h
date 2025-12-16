@@ -14,7 +14,7 @@
  optimized for large strings.
 */
 
-MJS_INLINE void Neon_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj) {
+MJS_INLINE void Neon_ParseStringToPool(MJSParsedData *parsed_data, MJSStringPoolNode *node) {
  const int8x16_t back_slash_16 = vdupq_n_s8('\\');
  const int8x16_t new_line_16 = vdupq_n_s8('\n');
  const int8x16_t double_quote_16 = vdupq_n_s8('\"');
@@ -41,16 +41,16 @@ MJS_INLINE void Neon_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *ob
 
   increment = Neon_FirstNonZeroIndex(is_equal_16);
   
-  vst1q_s8((signed char*)&obj->string_pool[obj->string_pool_size], current_16);
+  vst1q_s8((signed char*)&node->str[node->pool_size], current_16);
 
   prev_curr = parsed_data->current;
 
-  obj->string_pool_size += increment;
+  node->pool_size += increment;
   parsed_data->current += increment;
 
  }
  parsed_data->current = (increment != 16) ? parsed_data->current-1 : parsed_data->current;
- obj->string_pool_size = (increment != 16) ? obj->string_pool_size-1 : obj->string_pool_size;
+ node->pool_size = (increment != 16) ? node->pool_size-1 : node->pool_size;
 }
 
 #endif
