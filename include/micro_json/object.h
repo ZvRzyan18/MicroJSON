@@ -60,7 +60,7 @@ struct MJSBoolean {
  unsigned char value;
 };
 
-/*-----------------String Pooll::-------------------*/
+/*-----------------String Pooll-------------------*/
 
 struct MJSStringPool {
  MJSStringPoolNode *root;
