@@ -1,0 +1,21 @@
+/*
+ config.h
+ 
+ these are all adjustable values
+*/
+
+#define MJS_MAX_POOL_ALLOCATION_BYTES 512
+#define MJS_MAX_POOL_MEMORY_THRESHOLD 512
+#define MJS_MAX_POOL_CHUNK_NODE   4
+
+#define MJS_MAX_RESERVE_BYTES     32
+#define MJS_MAX_RESERVE_ELEMENTS  8
+#define MJS_MAX_NESTED_VALUE      20
+#define MJS_MAX_HASH_BUCKETS      8
+#define MJS_OPTIMAL_ALIGNMENT     16
+
+#define MJS_FORCE_VECTORIZE 
+
+/*
+#define MJS_CUSTOM_OPTIMAL_ALIGNMENT
+*/

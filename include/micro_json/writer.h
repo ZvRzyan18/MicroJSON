@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 
-MJS_COLD int MJSWriter_Serialize(MJSOutputStreamBuffer *buff, MJSObject *obj);
+MJS_COLD int MJSWriter_Serialize(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSDynamicType *container);
 
 
 #ifdef __cplusplus

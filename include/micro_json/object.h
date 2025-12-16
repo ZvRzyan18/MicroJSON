@@ -11,6 +11,8 @@ extern "C" {
 /*-----------------Forward def-------------------*/
 /* for pointer types */
 typedef struct MJSParsedData MJSParsedData;
+typedef struct MJSStringPool MJSStringPool;
+typedef struct MJSStringPoolNode MJSStringPoolNode;
 typedef struct MJSString MJSString;
 typedef struct MJSInt MJSInt;
 typedef struct MJSFloat MJSFloat;
@@ -28,9 +30,10 @@ typedef struct MJSOutputStreamBuffer MJSOutputStreamBuffer;
  JSON types
 */
 struct MJSString {
- unsigned char type;
- unsigned int  str_size;
- unsigned int  pool_index;
+ unsigned char  type;
+ unsigned int   str_size;
+ unsigned int   pool_index;
+ unsigned short chunk_index;
 };
 
 
@@ -57,6 +60,26 @@ struct MJSBoolean {
  unsigned char value;
 };
 
+/*-----------------String Pooll::-------------------*/
+
+struct MJSStringPool {
+ MJSStringPoolNode *root;
+ unsigned short node_size;
+ unsigned char node_reserve;
+};
+
+struct MJSStringPoolNode {
+ char *str;
+ unsigned int pool_size;
+ unsigned short pool_reserve;
+};
+
+MJS_COLD int MJSStringPool_Init(MJSStringPool *pool);
+MJS_COLD int MJSStringPool_Destroy(MJSStringPool *pool);
+MJS_HOT unsigned short MJSStringPool_GetCurrentNode(MJSStringPool *pool);
+MJS_HOT int MJSStringPool_ExpandNode(MJSStringPoolNode *node, unsigned int additional_size);
+MJS_HOT int MJSStringPool_AddToPool(MJSStringPool *pool, const char *str, unsigned int str_size, unsigned int *out_index, unsigned short *out_chunk_index);
+
 /*-----------------Array Container-------------------*/
 struct MJSArray {
  unsigned char  type;
@@ -72,28 +95,10 @@ MJS_HOT int MJSArray_Add(MJSArray *arr, MJSDynamicType *value);
 MJS_HOT MJSDynamicType* MJSArray_Get(MJSArray *arr, unsigned int index);
 MJS_HOT unsigned int MJSArray_Size(MJSArray *arr);
 
-MJS_HOT int MJSArray_AddString(MJSArray *arr, MJSObject *parent, const char *str);
-MJS_HOT const char* MJSArray_GetString(MJSArray *arr, MJSObject *parent, unsigned int index);
-MJS_HOT int MJSArray_AddObject(MJSArray *arr, MJSObject *obj);
-MJS_HOT MJSObject* MJSArray_GetObject(MJSArray *arr, unsigned int index);
-MJS_HOT int MJSArray_AddInt(MJSArray *arr, int _int_type);
-MJS_HOT int MJSArray_GetInt(MJSArray *arr, unsigned int index);
-MJS_HOT int MJSArray_AddFloat(MJSArray *arr, float _float_type);
-MJS_HOT float MJSArray_GetFloat(MJSArray *arr, unsigned int index);
-MJS_HOT int MJSArray_AddBoolean(MJSArray *arr, int _bool_type);
-MJS_HOT int MJSArray_GetBoolean(MJSArray *arr, unsigned int index);
-MJS_HOT int MJSArray_AddArray(MJSArray *arr, MJSArray *arr_input);
-MJS_HOT MJSArray* MJSArray_GetArray(MJSArray *arr, unsigned int index);
-
-
 /*-----------------Object Container-------------------*/
 struct MJSObject {
  unsigned char  type;
- char           *string_pool;
  MJSObjectPair  *obj_pair_ptr;
- unsigned int   string_pool_size;
-/* unsigned int next_empty;*/
- unsigned short string_pool_reserve;
  unsigned int   obj_pair_size;
  unsigned char  reserve;
 };
@@ -101,25 +106,10 @@ struct MJSObject {
 
 MJS_COLD int MJSObject_Init(MJSObject *container);
 MJS_COLD int MJSObject_Destroy(MJSObject *container);
-MJS_HOT int MJSObject_InsertFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size, MJSDynamicType *value);
-MJS_HOT int MJSObject_Insert(MJSObject *container, const char *key, unsigned int str_size, MJSDynamicType *value);
-MJS_HOT MJSDynamicType* MJSObject_Get(MJSObject *container, const char *key, unsigned int str_size);
-MJS_HOT MJSDynamicType* MJSObject_GetFromPool(MJSObject *container, unsigned int pool_index, unsigned int str_size);
-MJS_HOT unsigned int MJSObject_AddToStringPool(MJSObject *container, const char *str, unsigned int str_size);
-MJS_HOT const char* MJSObject_GetStringFromPool(MJSObject *container, MJSString *str);
-
-MJS_HOT int MJSObject_InsertString(MJSObject *container, const char *key, const char *str);
-MJS_HOT const char* MJSObject_GetString(MJSObject *container, const char *key);
-MJS_HOT int MJSObject_InsertObject(MJSObject *container, const char *key, MJSObject *obj);
-MJS_HOT MJSObject* MJSObject_GetObject(MJSObject *container, const char *key);
-MJS_HOT int MJSObject_InsertInt(MJSObject *container, const char *key, int _int_type);
-MJS_HOT int MJSObject_GetInt(MJSObject *container, const char *key);
-MJS_HOT int MJSObject_InsertFloat(MJSObject *container, const char *key, float _float_type);
-MJS_HOT float MJSObject_GetFloat(MJSObject *container, const char *key);
-MJS_HOT int MJSObject_InsertBoolean(MJSObject *container, const char *key, int _bool_type);
-MJS_HOT int MJSObject_GetBoolean(MJSObject *container, const char *key);
-MJS_HOT int MJSObject_InsertArray(MJSObject *container, const char *key, MJSArray *arr);
-MJS_HOT MJSArray* MJSObject_GetArray(MJSObject *container, const char *key);
+MJS_HOT int MJSObject_InsertFromPool(MJSObject *container, MJSStringPool *pool, unsigned int pool_index, unsigned int str_size, unsigned short pool_chunk_index, MJSDynamicType *value);
+MJS_HOT int MJSObject_Insert(MJSObject *container, MJSStringPool *pool, const char *key, unsigned int str_size, MJSDynamicType *value);
+MJS_HOT MJSDynamicType* MJSObject_Get(MJSObject *container, MJSStringPool *pool, const char *key, unsigned int str_size);
+MJS_HOT MJSDynamicType* MJSObject_GetFromPool(MJSObject *container, MJSStringPool *pool, unsigned int pool_index, unsigned int str_size, unsigned short pool_chunk_index);
 
 
 /*-----------------Types and pair-------------------*/
@@ -140,6 +130,7 @@ struct MJSObjectPair {
  MJSDynamicType value;
  unsigned int   key_pool_index;
  unsigned int   key_pool_size;
+ unsigned short chunk_node_index;
  unsigned int   next;
 };
 
@@ -147,7 +138,7 @@ struct MJSObjectPair {
 /*-----------------Parsed data object-------------------*/
 /* main container of json parsed data */
 struct MJSParsedData {
- MJSObject    container;
+ MJSDynamicType container;
 
  const char *current;
  const char *end;

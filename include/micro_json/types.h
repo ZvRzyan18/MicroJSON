@@ -1,10 +1,11 @@
 #ifndef MC_JSON_TYPES_H
 #define MC_JSON_TYPES_H
 
+#include "micro_json/config.h"
+
 /*
  compiler hints
 */
-
 
 #if defined(__GNUC__) || defined(__clang__)
 #define MJS_Likely(x)   __builtin_expect(!!(x), 1)
@@ -90,34 +91,18 @@ typedef enum {
  MJS_RESULT_INVALID_TYPE = -5,
  MJS_RESULT_REACHED_MAX_NESTED_DEPTH = -6,
  MJS_RESULT_EMPTY_KEY = -7,
- MJS_RESULT_DUPLICATE_KEY = -8, /* currently skipped */
+ MJS_RESULT_DUPLICATE_KEY = -8,
  MJS_RESULT_INCOMPLETE_STRING_SYNTAX = -9,
  MJS_RESULT_INVALID_ESCAPE_SEQUENCE = -10,
  MJS_RESULT_INVALID_HEX_VALUE = -11,
  MJS_RESULT_INVALID_WRITE_MODE = -12,
  MJS_RESULT_UNSUCCESSFUL_IO_WRITE = -13,
- MJS_RESULT_ROOT_NOT_FOUND = -14,
- MJS_RESULT_TOO_LARGE_NUMBER = -15,
- MJS_RESULT_TOO_SMALL_NUMBER = -17,
- MJS_RESULT_INVALID_STRING_CHARACTER = -18,
- MJS_RESULT_INVALID_NUMBER_TYPE = -19,
+ MJS_RESULT_TOO_LARGE_NUMBER = -14,
+ MJS_RESULT_TOO_SMALL_NUMBER = -15,
+ MJS_RESULT_INVALID_STRING_CHARACTER = -16,
+ MJS_RESULT_INVALID_NUMBER_TYPE = -17,
 } MJS_RESULT;
 
-/*
- limits
-*/
-
-#define MJS_MAX_RESERVE_BYTES     64
-#define MJS_MAX_RESERVE_ELEMENTS  8
-#define MJS_MAX_NESTED_VALUE      10
-#define MJS_MAX_HASH_BUCKETS      8
-#define MJS_OPTIMAL_ALIGNMENT     16
-
-#define MJS_FORCE_VECTORIZE 
-
-/*
-#define MJS_CUSTOM_OPTIMAL_ALIGNMENT
-*/
 
 /* convert code into constant string literals */
 MJS_INLINE const char* MJS_CodeToString(signed char code) {
@@ -163,9 +148,6 @@ MJS_INLINE const char* MJS_CodeToString(signed char code) {
   break;
   case MJS_RESULT_UNSUCCESSFUL_IO_WRITE:
    return "MJE_RESULT_UNSUCCESSFUL_IO_WRITE";
-  break;
-  case MJS_RESULT_ROOT_NOT_FOUND:
-   return "MJE_RESULT_ROOT_NOT_FOUND";
   break;
   case MJS_RESULT_TOO_LARGE_NUMBER:
    return "MJS_RESULT_TOO_LARGE_NUMBER";
