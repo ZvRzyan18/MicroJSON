@@ -1,3 +1,13 @@
+# micro_json 0.2.1
+
+• fix null pointer dereference inside a string pool
+
+• fix possible overflow memory access
+
+• fix seg fault for large json (string pool memory)
+
+• detect the number value inside the switch cases, not default 
+
 # micro_json 0.2.0 (string pool feature)
 
 • minimize branches for detecting error result inside a loop

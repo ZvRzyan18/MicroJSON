@@ -34,7 +34,6 @@ MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSStringPool *pool
  if(MJS_Unlikely(depth > MJS_MAX_NESTED_VALUE))
   return MJS_RESULT_REACHED_MAX_NESTED_DEPTH;
 
- 
  MJSObjectPair *pairs = obj->obj_pair_ptr;
  int result;
  unsigned int i, iter;
@@ -61,23 +60,25 @@ MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSStringPool *pool
 
  /* check the size first */
  for(i = 0; i < estimated_size; i++) {
-  if(pairs[i].key_pool_index != 0xFFFFFFFF) {
+  if(pairs[i].key_pool_size != 0xFFFFFFFF) {
    total_size++;
   }
  }
  
  iter = 0;
  for(i = 0; i < estimated_size; i++) {
-  if(pairs[i].key_pool_index != 0xFFFFFFFF) {
+  if(pairs[i].key_pool_size != 0xFFFFFFFF) {
 
    MJSObjectPair m_pair = pairs[i];
+
    result = MJS_WriteStringToCache(buff, &pool->root[m_pair.chunk_node_index].str[m_pair.key_pool_index], m_pair.key_pool_size);
    if(MJS_Unlikely(result))
     return result;
+
    result = MJSOutputStreamBuffer_Write(buff, buff->cache, buff->cache_size);
    if(MJS_Unlikely(result))
     return result;
-   
+
    result = MJSOutputStreamBuffer_Write(buff, " : ", 3);
    if(MJS_Unlikely(result))
     return result;
@@ -126,7 +127,7 @@ MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSStringPool *pool,
  int result;
  switch(value->type) {
   case MJS_TYPE_STRING:
-
+  
    result = MJS_WriteStringToCache(buff, &pool->root[value->value_string.chunk_index].str[value->value_string.pool_index], value->value_string.str_size);
    if(MJS_Unlikely(result))
     return result;

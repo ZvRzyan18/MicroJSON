@@ -8,7 +8,6 @@
  devices.
 */
 
-
 /*
  minimized branches vector,
  optimized for large strings.
