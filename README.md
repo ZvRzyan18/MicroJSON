@@ -7,14 +7,18 @@ written in c89 (NOTE : this library is not stable yet)
 * Embeddable (No need build systems)
 * Self Contained (No external library aside from libc, <stdlib.h>, <string.h>, <math.h>)
 
-# Optimizations
+# Limitations
+* Not thread safe
+  
+# Optimizations 
+* String Pool
 * SIMD Instructions (ARM NEON)
 * Aggressive Loop Unrolling
 * Memory aligned allocator
 * Cache friendly array Based Hash
 * Tag unions for multiple types
 
-# Sample
+# Example
  [sample_array.cpp](https://github.com/ZvRzyan18/MicroJSON/blob/main/sample_array.cpp)
 ```cpp
 #include <stdio.h>
@@ -24,7 +28,6 @@ written in c89 (NOTE : this library is not stable yet)
 
 int main(int argc, char *argv[]) {
 
- //C++ syntax (only used here for clear example)
  const char* json_string = R"(
  
   {
@@ -35,50 +38,59 @@ int main(int argc, char *argv[]) {
 
  MJSParsedData json_parser;
  MJSTokenResult json_result;
- 
+ MJSStringPool pool;
+ int result;
  //init parser data
- if(MJSParserData_Init(&json_parser)) {
-  perror("init data failed");
+ result = MJSParserData_Init(&json_parser);
+ if(result) {
+  fprintf(stderr, "init data failed %s\n", MJS_CodeToString(result));
   return -1;
  }
   
- //init tokenizer
- if(MJS_InitToken(&json_parser, json_string, strlen(json_string))) {
-  perror("init token failed");
+ result = MJSStringPool_Init(&pool);
+ if(result) {
+  fprintf(stderr, "init pool failed %s\n", MJS_CodeToString(result));
+  return -1;
+ }
+ 
+ json_result = MJS_TokenParse(&json_parser, &pool, json_string, strlen(json_string));
+ if(json_result.code) {
+  fprintf(stderr, "Error : Line [%i] -> %s", json_result.line, MJS_CodeToString(json_result.code));
   return -1;
  }
  
  //extract the main object container
- MJSObject *main_object = &json_parser.container;
-
-
- //start the parsing process
-  json_result = MJS_StartToken(&json_parser);
-  if(json_result.code) {
-   fprintf(stderr, "Error : Line [%i] -> %s", json_result.line, MJS_CodeToString(json_result.code));
-   return -1;
-  } else {
+ MJSDynamicType *main_object = &json_parser.container; 
  
-  //extract the array reference pointer.
-   const char *ref_key = "my_array";
-   MJSObjectPair *pair = MJSObject_GetPairReference(main_object, ref_key, strlen(ref_key));
-   if(!pair) {
+ //the top hierarchy type in json above is object, so it must ne checked
+ if(main_object->type != MJS_TYPE_OBJECT)
+  fprintf(stderr, " not an object \n");
+  
+  //extract the array reference pointer, it will return NULL if not found
+  const char *ref_key = "my_array";
+  MJSDynamicType *value = MJSObject_Get(&main_object->value_object, &pool, ref_key, strlen(ref_key));
+   if(!value) {
     printf("%s, not found\n", ref_key);
     return -1;
    }
-   MJSArray *arr = &pair->value.value_array;
+  //make sure all types must be checked first, so it wont crash
+  if(value->type != MJS_TYPE_ARRAY)
+   fprintf(stderr, " reference %s 's value not an array \n", ref_key);
+
+   MJSArray *arr = &value->value_array;
    
    //print all results
    for(int i = 0; i < MJSArray_Size(arr); i++) {
    
-    //dynamic type
+    //dynamic type (array[i] element)
     MJSDynamicType *dynamic_type = MJSArray_Get(arr, i);
     
     //json uses a dynamic typing, so it needs to check
     //specific types first before using it
     switch(dynamic_type->type) {
     case MJS_TYPE_STRING:
-     printf("string : %s\n", MJSObject_GetStringFromPool(main_object, &dynamic_type->value_string));
+     // read string from pool
+     printf("string : %s\n", &pool.root[dynamic_type->value_string.chunk_index].str[dynamic_type->value_string.pool_index]);
     break;
     case MJS_TYPE_NULL:
      printf("no_type : null\n");
@@ -95,11 +107,17 @@ int main(int argc, char *argv[]) {
    }
   }
   
- }
   
  //all objects allocated by parser will be destroyed.
- if(MJSParserData_Destroy(&json_parser)) {
-  perror("destroy failed");
+ result = MJSParserData_Destroy(&json_parser);
+ if(result) {
+  fprintf(stderr, "destroyed error %s\n", MJS_CodeToString(result));
+  return -1;
+ }
+ 
+ result = MJSStringPool_Destroy(&pool);
+ if(result) {
+  fprintf(stderr, "destroyed error %s\n", MJS_CodeToString(result));
   return -1;
  }
  
