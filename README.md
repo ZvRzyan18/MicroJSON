@@ -5,7 +5,7 @@ written in c89 (NOTE : this library is not stable yet)
 # Features
 * Simple
 * Embeddable (No need build systems)
-* Self Contained (No external library aside from libc, <stdlib.h>, <string.h>, <math.h>)
+* Self Contained (No external library aside from libc, <stdlib.h>, <string.h>)
 
 # Limitations
 * Not thread safe
