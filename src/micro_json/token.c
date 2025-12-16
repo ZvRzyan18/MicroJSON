@@ -97,6 +97,16 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSS
    break;
    case '-': /* might be int or float */
    case '+': /* might be int or float */
+   case '0':
+   case '1':
+   case '2':
+   case '3':
+   case '4':
+   case '5':
+   case '6':
+   case '7':
+   case '8':
+   case '9':
     result = MJS_ParseNumber(parsed_data, &parsed_data->container);
    break;
    case '[': /* an array */
@@ -112,11 +122,7 @@ MJS_HOT static int read_json_object_first_value(MJSParsedData *parsed_data, MJSS
     result = read_json_object(parsed_data, pool, &parsed_data->container.value_object, depth+1);
    break;
    default:
-    if(MJS_IsDigit(*parsed_data->current)) {
-     /* might be int or float */
-     result = MJS_ParseNumber(parsed_data, &parsed_data->container);
-    } else
-     result = (!result && !MJS_IsWhiteSpace(*parsed_data->current) ? MJS_RESULT_UNEXPECTED_TOKEN : result);
+    result = (!result && !MJS_IsWhiteSpace(*parsed_data->current) ? MJS_RESULT_UNEXPECTED_TOKEN : result);
    break;
   }
   parsed_data->current++;
@@ -235,6 +241,16 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSStringP
    break;
    case '-': /* might be int or float */
    case '+': /* might be int or float */
+   case '0':
+   case '1':
+   case '2':
+   case '3':
+   case '4':
+   case '5':
+   case '6':
+   case '7':
+   case '8':
+   case '9':
     result = MJS_ParseNumber(parsed_data, &dynamic_type);
     result = result ? result : MJSObject_InsertFromPool_IMPL(container, pool, pool_index, str_size, chunk_index, &dynamic_type);
     return result;
@@ -258,13 +274,7 @@ MJS_HOT static int read_json_object_value(MJSParsedData *parsed_data, MJSStringP
     return result;
    break;
    default:
-    if(MJS_IsDigit(*parsed_data->current)) {
-     /* might be int or float */
-     result = MJS_ParseNumber(parsed_data, &dynamic_type);
-     result = result ? result :  MJSObject_InsertFromPool_IMPL(container, pool, pool_index, str_size, chunk_index, &dynamic_type);
-     return result;
-    } else
-     result = !MJS_IsWhiteSpace(*parsed_data->current) * MJS_RESULT_UNEXPECTED_TOKEN;
+    result = !MJS_IsWhiteSpace(*parsed_data->current) * MJS_RESULT_UNEXPECTED_TOKEN;
    break;
   }
   parsed_data->current++;
@@ -334,6 +344,16 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSStringPo
    break;
    case '-':
    case '+':
+   case '0':
+   case '1':
+   case '2':
+   case '3':
+   case '4':
+   case '5':
+   case '6':
+   case '7':
+   case '8':
+   case '9':
    
     result = !(flags & _EXPECTED_FOR_VALUE) * MJS_RESULT_UNEXPECTED_TOKEN;
     result = result ? result : MJS_ParseNumber(parsed_data, &dynamic_type);
@@ -375,14 +395,7 @@ MJS_HOT static int read_json_array_value(MJSParsedData *parsed_data, MJSStringPo
     flags = _EXPECTED_FOR_VALUE;
    break;
    default:
-    if(MJS_IsDigit(*parsed_data->current)) {
-     result = !(flags & _EXPECTED_FOR_VALUE) * MJS_RESULT_UNEXPECTED_TOKEN;
-     result = result ? result : MJS_ParseNumber(parsed_data, &dynamic_type);
-     result = result ? result : MJSArray_Add_IMPL(arr, &dynamic_type);
-     flags = _HAS_VALUE;
-     break;
-    } else
-     result = !MJS_IsWhiteSpace(*parsed_data->current) * MJS_RESULT_UNEXPECTED_TOKEN;
+    result = !MJS_IsWhiteSpace(*parsed_data->current) * MJS_RESULT_UNEXPECTED_TOKEN;
    break;
   }
   parsed_data->current++;

@@ -100,17 +100,19 @@ const char mjs__hex_table[255] = {
 MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str, unsigned int str_size) {
  const char *begin_ptr = str;
  const char *end_ptr = str+str_size;
+ int result = 0;
  buff->cache_size = 0;
  int advance = 0;
  int unicode = 0;
- 
  buff->cache[buff->cache_size++] = '\"';
 
  while(begin_ptr < end_ptr) {
   
   /* make sure no overflow */
   if(MJS_Unlikely((buff->cache_size+5) > buff->cache_allocated_size)) {
-   MJSOutputStreamBuffer_ExpandCache(buff);
+   result = MJSOutputStreamBuffer_ExpandCache(buff);
+   if(MJS_Unlikely(result))
+    return result;
   }
   
   /*
@@ -149,6 +151,10 @@ MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str,
    break;
    default:
     if(MJS_Unlikely(MJS_CheckUnicode(begin_ptr[0], begin_ptr[1]))) {
+     /*
+     if(MJS_Unlikely(!(begin_ptr+3 < end_ptr)))
+      return MJS_RESULT_INCOMPLETE_STRING_SYNTAX;
+     */
      unicode = MJS_UTF8ToUnicode(begin_ptr, &advance);
      sprintf(&buff->cache[buff->cache_size], "\\u%04x", unicode);
      buff->cache_size += advance+3;
@@ -156,12 +162,10 @@ MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str,
     }
    break;
   }
- 
   buff->cache[buff->cache_size] = *begin_ptr;
   buff->cache_size++;
   begin_ptr++;
  }
-
  buff->cache[buff->cache_size++] = '\"';
 
  return 0;
@@ -302,8 +306,10 @@ MJS_HOT int MJS_ParseNumber(MJSParsedData *parsed_data, MJSDynamicType *type) {
 MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSStringPoolNode *node, unsigned int *_index, unsigned int *_size) {
  int result;
  *_index = node->pool_size;
+
  unsigned int m_index = node->pool_size;
  unsigned int diff = 0;
+ 
  while(parsed_data->current < parsed_data->end) {
 
 
@@ -346,8 +352,9 @@ MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSStringPoolNode 
     case 'u': /*unicode*/
     
      /* avoid overflow access  */
-     if(MJS_Unlikely((parsed_data->current+4) >= parsed_data->end))
+     if(MJS_Unlikely((parsed_data->current+4) >= parsed_data->end)) {
       return MJS_RESULT_INCOMPLETE_STRING_SYNTAX;
+     }
      
      parsed_data->current++;
      result = MJS_ReadUnicodeHexadecimal(parsed_data, node);
@@ -377,7 +384,7 @@ MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSStringPoolNode 
   parsed_data->current++;
  }
  __MJS_ParseStringToCache_finish:
- *_size = (node->pool_size - (*_index));
+ *_size = (node->pool_size - *_index);
  node->str[node->pool_size++] = '\0';
  node->pool_reserve--;
  return 0;

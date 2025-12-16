@@ -35,7 +35,7 @@ MJS_INLINE void* __aligned_realloc(void *ptr, unsigned int m_size) {
  p2 = (void**)(((MJS_Uint64)p1 + offset) & ~(MJS_OPTIMAL_ALIGNMENT - 1));
  p2[-1] = p1;
  return p2;
-#else
+#else 
  return realloc(ptr, m_size);
 #endif
 }
@@ -77,7 +77,7 @@ MJS_INLINE unsigned int generate_hash_index(const char *str, unsigned int str_si
 static MJS_COLD int MJSStringPool_Init_IMPL(MJSStringPool *pool) {
  pool->root = (MJSStringPoolNode*)__aligned_alloc(sizeof(MJSStringPoolNode) * MJS_MAX_POOL_CHUNK_NODE);
  pool->node_size = 1;
- pool->node_reserve = MJS_MAX_POOL_CHUNK_NODE;
+ pool->node_reserve = MJS_MAX_POOL_CHUNK_NODE-1;
  if(MJS_Unlikely(!pool->root))
   return MJS_RESULT_ALLOCATION_FAILED;
  pool->root[0].str = (char*)__aligned_alloc(MJS_MAX_POOL_ALLOCATION_BYTES);
@@ -112,15 +112,15 @@ static MJS_HOT unsigned short MJSStringPool_GetCurrentNode_IMPL(MJSStringPool *p
    return 0xFFFF;
   pool->node_reserve = MJS_MAX_POOL_CHUNK_NODE;
  }
- curr = &pool->root[pool->node_size];
- i = pool->node_size;
+ i = pool->node_size++;
+ curr = &pool->root[i];
  curr->str = (char*)__aligned_alloc(MJS_MAX_POOL_ALLOCATION_BYTES);
  if(MJS_Unlikely(!curr->str))
   return 0xFFFF;
+  
  curr->pool_size = 0;
  curr->pool_reserve = MJS_MAX_POOL_ALLOCATION_BYTES;
  
- pool->node_size++;
  pool->node_reserve--;
  return i;
 }
@@ -137,7 +137,7 @@ static MJS_HOT int MJSStringPool_AddToPool_IMPL(MJSStringPool *pool, const char 
  int result = 0;
  *out_chunk_index = MJSStringPool_GetCurrentNode_IMPL(pool);
  MJSStringPoolNode *node = &pool->root[*out_chunk_index];
- 
+
  *out_index = node->pool_size;
  if(MJS_Unlikely(node->pool_reserve <= str_size))
   result = MJSStringPool_ExpandNode_IMPL(node, str_size - node->pool_reserve + 1);
@@ -202,7 +202,7 @@ static MJS_COLD int MJSArray_Destroy_IMPL(MJSArray *arr) {
  add to MJSArray object, return 0 if success, return -1 if not.
 */
 MJS_HOT static int MJSArray_Add_IMPL(MJSArray *arr, MJSDynamicType *value) {
- if(arr->reserve > 0) {
+ if(MJS_Likely(arr->reserve > 0)) {
   arr->dynamic_type_ptr[arr->size++] = *value;
   arr->reserve--;
  } else {
@@ -211,11 +211,10 @@ MJS_HOT static int MJSArray_Add_IMPL(MJSArray *arr, MJSDynamicType *value) {
   if(MJS_Unlikely(!arr->dynamic_type_ptr))
    return MJS_RESULT_ALLOCATION_FAILED;
    
-  arr->reserve = MJS_MAX_RESERVE_ELEMENTS;
+  arr->reserve = MJS_MAX_RESERVE_ELEMENTS-1;
   
   /* add value */
   arr->dynamic_type_ptr[arr->size++] = *value;
-  arr->reserve--;
  }
  return 0;
 }
@@ -600,8 +599,9 @@ static MJS_HOT int MJSOutputStreamBuffer_Flush_IMPL(MJSOutputStreamBuffer *buff)
 
 static MJS_HOT int MJSOutputStreamBuffer_ExpandCache_IMPL(MJSOutputStreamBuffer *buff) {  
  buff->cache = (char*)__aligned_realloc(buff->cache, (buff->cache_allocated_size + MJS_MAX_RESERVE_BYTES));
- if(MJS_Unlikely(!buff->cache))
+ if(MJS_Unlikely(!buff->cache)) {
   return MJS_RESULT_ALLOCATION_FAILED;
+ }
  buff->cache_allocated_size += MJS_MAX_RESERVE_BYTES;
  return 0;
 }
