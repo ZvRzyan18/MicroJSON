@@ -7,9 +7,6 @@
 #include "micro_json/parser_neon.h"
 #endif
 
-/* convert lowecase char to uppercase */
-#define MJS_ToUpperChar(c) (c & ~( (c >= 'a' && c <= 'z') * 0x20 ))
-
 /* check for valid whitespace */
 #define MJS_IsWhiteSpace(c) ((c == 0x20) || (c == 0x0A) || (c == 0x0D) || (c == 0x09))
 /* check it its digit or not */
@@ -50,7 +47,7 @@ MJS_INLINE int MJS_UnicodeToChar(unsigned int unicode, char *out, unsigned int c
 }
 
 /* parse unicode hexadecimal */
-MJS_INLINE int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data, MJSObject *obj) {
+MJS_INLINE int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data, MJSStringPoolNode *node) {
  int result = 0;
  unsigned int value;
  
@@ -72,7 +69,7 @@ MJS_INLINE int MJS_ReadUnicodeHexadecimal(MJSParsedData *parsed_data, MJSObject 
        | (mjs__hex_table[(int)c2] << 4)
        | (mjs__hex_table[(int)c3]);
   
- obj->string_pool_size += MJS_UnicodeToChar(value, obj->string_pool, obj->string_pool_size);
+ node->pool_size += MJS_UnicodeToChar(value, node->str, node->pool_size);
  return result;
 }
 
@@ -120,7 +117,7 @@ MJS_HOT int MJS_WriteStringToCache(MJSOutputStreamBuffer *buff, const char *str,
 MJS_HOT int MJS_ParseNumber(MJSParsedData *parsed_data, MJSDynamicType *type);
 
 /* parse string to pool */
-MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSObject *obj, unsigned int *_index, unsigned int *_size);
+MJS_HOT int MJS_ParseStringToPool(MJSParsedData *parsed_data, MJSStringPoolNode *node, unsigned int *_index, unsigned int *_size);
 
 
 #endif

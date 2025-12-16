@@ -1,26 +1,23 @@
 #include "micro_json/writer.h"
 #include "micro_json/parser.h"
+#include "micro_json/object_impl.h"
 #include <string.h>
 
 /*-----------------Static func decl-------------------*/
 
-MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSObject *obj, unsigned int depth);
-MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSDynamicType *value, unsigned int depth);
-MJS_HOT static int write_array(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSArray *arr, unsigned int depth);
+MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSObject *obj, unsigned int depth);
+MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSDynamicType *value, unsigned int depth);
+MJS_HOT static int write_array(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSArray *arr, unsigned int depth);
 MJS_HOT static int indent(MJSOutputStreamBuffer *buff, unsigned int count);
 
 /*-----------------Writer func-------------------*/
 
-MJS_COLD int MJSWriter_Serialize(MJSOutputStreamBuffer *buff, MJSObject *obj) {
- if(MJS_Unlikely(!buff || !obj))
+MJS_COLD int MJSWriter_Serialize(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSDynamicType *container) {
+ if(MJS_Unlikely(!buff || !container))
   return MJS_RESULT_NULL_POINTER;
  int result;
- 
- MJSDynamicType *ref = MJSObject_Get(obj, "root", 4);
- if(MJS_Unlikely(!ref))
-  return MJS_RESULT_ROOT_NOT_FOUND;
   
- result = write_value(buff, obj, ref, 0);
+ result = write_value(buff, pool, container, 0);
  if(MJS_Unlikely(result))
   return result;
   
@@ -33,8 +30,7 @@ MJS_COLD int MJSWriter_Serialize(MJSOutputStreamBuffer *buff, MJSObject *obj) {
 
 /*-----------------Static func-------------------*/
 
-MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSObject *obj, unsigned int depth) {
- 
+MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSObject *obj, unsigned int depth) { 
  if(MJS_Unlikely(depth > MJS_MAX_NESTED_VALUE))
   return MJS_RESULT_REACHED_MAX_NESTED_DEPTH;
 
@@ -75,7 +71,7 @@ MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSObject *obj, uns
   if(pairs[i].key_pool_index != 0xFFFFFFFF) {
 
    MJSObjectPair m_pair = pairs[i];
-   result = MJS_WriteStringToCache(buff, &obj->string_pool[m_pair.key_pool_index], m_pair.key_pool_size);
+   result = MJS_WriteStringToCache(buff, &pool->root[m_pair.chunk_node_index].str[m_pair.key_pool_index], m_pair.key_pool_size);
    if(MJS_Unlikely(result))
     return result;
    result = MJSOutputStreamBuffer_Write(buff, buff->cache, buff->cache_size);
@@ -86,7 +82,7 @@ MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSObject *obj, uns
    if(MJS_Unlikely(result))
     return result;
 
-   result = write_value(buff, obj, &m_pair.value, depth);
+   result = write_value(buff, pool, &m_pair.value, depth);
   if(MJS_Unlikely(result))
     return result;
 
@@ -126,12 +122,12 @@ MJS_HOT static int write_object(MJSOutputStreamBuffer *buff, MJSObject *obj, uns
 
 
 
-MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSDynamicType *value, unsigned int depth) {
+MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSDynamicType *value, unsigned int depth) {
  int result;
  switch(value->type) {
   case MJS_TYPE_STRING:
 
-   result = MJS_WriteStringToCache(buff, MJSObject_GetStringFromPool(obj, &value->value_string), value->value_string.str_size);
+   result = MJS_WriteStringToCache(buff, &pool->root[value->value_string.chunk_index].str[value->value_string.pool_index], value->value_string.str_size);
    if(MJS_Unlikely(result))
     return result;
    result = MJSOutputStreamBuffer_Write(buff, buff->cache, buff->cache_size);
@@ -160,14 +156,14 @@ MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSD
   break;
   case MJS_TYPE_OBJECT:
 
-   result = write_object(buff, &value->value_object, depth+1);
+   result = write_object(buff, pool, &value->value_object, depth+1);
    if(MJS_Unlikely(result))
     return result;
  
   break;
   case MJS_TYPE_ARRAY:
 
-   result = write_array(buff, obj, &value->value_array, depth+1);
+   result = write_array(buff, pool, &value->value_array, depth+1);
    if(MJS_Unlikely(result))
     return result;
 
@@ -208,7 +204,7 @@ MJS_HOT static int write_value(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSD
 
 
 
-MJS_HOT static int write_array(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSArray *arr, unsigned int depth) {
+MJS_HOT static int write_array(MJSOutputStreamBuffer *buff, MJSStringPool *pool, MJSArray *arr, unsigned int depth) {
  int result;
  unsigned int i;
  unsigned int arr_size = MJSArray_Size(arr);
@@ -219,7 +215,7 @@ MJS_HOT static int write_array(MJSOutputStreamBuffer *buff, MJSObject *obj, MJSA
   
  for(i = 0; i < arr_size; i++) {
   MJSDynamicType *curr_obj = MJSArray_Get(arr, i);
-  result = write_value(buff, obj, curr_obj, depth);
+  result = write_value(buff, pool, curr_obj, depth);
   if(MJS_Unlikely(result))
    return result;
   

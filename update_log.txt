@@ -1,4 +1,42 @@
-# micro_json 0.1.0
+# micro_json 0.2.0 (string pool feature)
+
+• minimize branches for detecting error result inside a loop
+
+• create a new file (config.h) for config macro
+
+• remove functions for adding/getting specific object
+
+• use expected name/value bitmask
+
+• detect some potential syntax error in json array
+
+• detect some potential syntax error in json object
+
+• fix excess comma in json array
+
+• fix excess comma in json array
+
+• fix array error unclosed square brackets
+
+# micro_json 0.1.1
+
+• minimize memory allocated in pool
+
+• minimize the threshold memory in pool
+
+• double the size of max nested value
+
+• remove the root object detection
+
+• re-include to detect duplicated key value
+
+• update SIMD to store directly into pool
+
+• add a string pool to minimize a bottleneck of malloc/free/realloc
+
+• add string pool allocation limits
+
+# micro_json 0.1.0 (full core functionality)
 
 • stop reliance on cache when parsing json string
 
