@@ -1,5 +1,5 @@
 # MicroJSON (0.2.0)
-Simple, Extremely Fast, Low level and lightweight json parser/generator
+Simple, Extremely Fast, Low level json parser/generator
 written in c89 (NOTE : this library is not stable yet)
 
 # Features
